@@ -6,7 +6,7 @@ const TelegramBot = require("node-telegram-bot-api");
 // Internal Modules
 const { connectDB } = require("./lib/database");
 const { parseTransaction } = require("./lib/ai");
-const { generateReport } = require("./lib/reporter");
+const { generateReport, getTopTransactions } = require("./lib/reporter");
 const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo } = require("./lib/helpers");
 const { initMQTT } = require("./lib/mqtt");
 
@@ -51,6 +51,7 @@ Available Commands:
 /r - Generate spending report
 /t or /today - List today's transactions
 /l or /list - List transactions for the last 7 days
+/top <number> - List top most expensive items (default 10)
 /td <number> - Delete today's transaction by list number
 /h or /help - Show this help message
             `;
@@ -61,6 +62,14 @@ Available Commands:
         if (text === "/r") {
             const report = await generateReport(userId, transactions);
             return bot.sendMessage(chatId, report, { parse_mode: "Markdown" });
+        }
+
+        // TOP ITEMS COMMAND
+        if (text.startsWith("/top")) {
+            const args = text.split(" ");
+            const limit = parseInt(args[1]) || 10;
+            const topReport = await getTopTransactions(userId, transactions, limit);
+            return bot.sendMessage(chatId, topReport);
         }
 
         // TODAY LIST COMMAND (Jakarta)
