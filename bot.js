@@ -5,7 +5,7 @@ const TelegramBot = require("node-telegram-bot-api");
 
 // Internal Modules
 const { connectDB } = require("./lib/database");
-const { parseTransaction } = require("./lib/ai");
+const { parseTransaction, askAI } = require("./lib/ai");
 const { generateReport, getTopTransactions } = require("./lib/reporter");
 const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo } = require("./lib/helpers");
 const { initMQTT } = require("./lib/mqtt");
@@ -53,6 +53,7 @@ Available Commands:
 /l or /list - List transactions for the last 7 days
 /top <number> - List top most expensive items (default 10)
 /td <number> - Delete today's transaction by list number
+/ask <question> - Ask AI about your expenses
 /h or /help - Show this help message
             `;
             return bot.sendMessage(chatId, helpMessage, { parse_mode: "Markdown" });
@@ -117,6 +118,50 @@ Available Commands:
                 }
             }
             return;
+        }
+
+        // ASK COMMAND
+        if (text && text.startsWith("/ask")) {
+            const question = text.replace("/ask", "").trim();
+            if (!question) return bot.sendMessage(chatId, "Please provide a question. Example: /ask how much did I spend on coffee?");
+
+            let reportText = "Message Received";
+            let statusMsg = await bot.sendMessage(chatId, reportText);
+            
+            let answer = null;
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            // Fetch last 30 days of transactions
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const recentTransactions = await transactions.find({ userId, createdAt: { $gte: thirtyDaysAgo } }).sort({ createdAt: -1 }).toArray();
+
+            while (attempts < maxAttempts) {
+                attempts++;
+                reportText += `\nSending to AI #${attempts}`;
+                await bot.editMessageText(reportText, {
+                    chat_id: chatId,
+                    message_id: statusMsg.message_id
+                });
+
+                try {
+                    answer = await askAI(question, recentTransactions);
+                    break; 
+                } catch (err) {
+                    console.error(`Attempt ${attempts} failed:`, err.message);
+                    if (attempts === maxAttempts) {
+                        await bot.editMessageText(reportText + `\nfail`, {
+                            chat_id: chatId,
+                            message_id: statusMsg.message_id
+                        });
+                        return;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
+
+            return bot.sendMessage(chatId, answer, { parse_mode: "Markdown" });
         }
 
         // AI PARSE WITH RETRY & REPORTING
