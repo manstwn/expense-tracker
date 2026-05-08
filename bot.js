@@ -119,11 +119,46 @@ Available Commands:
             return;
         }
 
-        // AI PARSE
-        const parsedItems = await parseTransaction(text, audioBuffer);
+        // AI PARSE WITH RETRY & REPORTING
+        let reportText = "Message Received";
+        let statusMsg = await bot.sendMessage(chatId, reportText);
+        
+        let parsedItems = null;
+        let attempts = 0;
+        const maxAttempts = 5;
 
-        if (!parsedItems || parsedItems.length === 0) {
-            return bot.sendMessage(chatId, "No transactions detected.");
+        while (attempts < maxAttempts) {
+            attempts++;
+            reportText += `\nSending to AI #${attempts}`;
+            await bot.editMessageText(reportText, {
+                chat_id: chatId,
+                message_id: statusMsg.message_id
+            });
+
+            try {
+                parsedItems = await parseTransaction(text, audioBuffer);
+                if (parsedItems && parsedItems.length > 0) {
+                    break; // Success!
+                } else {
+                    // No transactions found
+                    await bot.editMessageText(reportText + "\nNo transactions detected.", {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.error(`Attempt ${attempts} failed:`, err.message);
+                if (attempts === maxAttempts) {
+                    await bot.editMessageText(reportText + `\nfail`, {
+                        chat_id: chatId,
+                        message_id: statusMsg.message_id
+                    });
+                    return;
+                }
+                // wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
         }
 
         // SAVE ALL ITEMS
