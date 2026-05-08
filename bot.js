@@ -62,7 +62,11 @@ Available Commands:
         // REPORT COMMAND
         if (text === "/r") {
             const report = await generateReport(userId, transactions);
-            return bot.sendMessage(chatId, report, { parse_mode: "Markdown" });
+            try {
+                return await bot.sendMessage(chatId, report, { parse_mode: "Markdown" });
+            } catch (err) {
+                return await bot.sendMessage(chatId, report);
+            }
         }
 
         // TOP ITEMS COMMAND
@@ -114,7 +118,11 @@ Available Commands:
                     const items = dayData.map(x => `- ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
                     
                     const message = `*${dateStr}*\n(Total: Rp${formatCurrency(total)})\n${items}`;
-                    await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+                    try {
+                        await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+                    } catch (err) {
+                        await bot.sendMessage(chatId, message);
+                    }
                 }
             }
             return;
@@ -161,7 +169,15 @@ Available Commands:
                 }
             }
 
-            return bot.sendMessage(chatId, answer, { parse_mode: "Markdown" });
+            // Cleanup Markdown for Telegram V1
+            const cleanedAnswer = answer.replace(/\*\*(.*?)\*\*/g, '*$1*');
+
+            try {
+                return await bot.sendMessage(chatId, cleanedAnswer, { parse_mode: "Markdown" });
+            } catch (err) {
+                console.error("Telegram Markdown Error:", err.message);
+                return await bot.sendMessage(chatId, answer); // Fallback to raw answer without markdown
+            }
         }
 
         // AI PARSE WITH RETRY & REPORTING
