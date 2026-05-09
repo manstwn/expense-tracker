@@ -56,6 +56,7 @@ bot.on("message", async (msg) => {
 
 *Edit & Delete (Old Data):*
 /l <n> - List items from n days ago (e.g., /l 1 for yesterday)
+/ln DD/MM/YYYY <val> <name> - New entry on date
 /ld DD/MM/YYYY <num> - Delete item #num on date
 /lev DD/MM/YYYY <num> <value> - Edit item #num VALUE on date
 /len DD/MM/YYYY <num> <name> - Edit item #num NAME on date
@@ -65,6 +66,7 @@ bot.on("message", async (msg) => {
 /te <num> <info> - Edit today's item #num (AI)
 
 _Examples:_
+- \`/ln 03/05/2026 25000 Bakso\` (Add item to May 3rd)
 - \`/ld 09/05/2026 1\` (Delete item 1 on May 9)
 - \`/lev 09/05/2026 2 25000\` (Update amount of item 2)
 - \`/len 09/05/2026 3 Coffee\` (Update name of item 3)
@@ -279,6 +281,32 @@ _Examples:_
             await transactions.updateOne({ _id: target._id }, { $set: { item: newName } });
             
             return bot.sendMessage(chatId, `Updated Name ✅\n\nOld: ${target.item}\nNew: ${newName}`);
+        }
+
+        // NEW ENTRY ON SPECIFIC DATE
+        if (text && text.startsWith("/ln")) {
+            const parts = text.split(" ");
+            if (parts.length < 4) return bot.sendMessage(chatId, "Usage: /ln DD/MM/YYYY <value> <name>\nExample: /ln 03/05/2026 25000 Bakso");
+
+            const dateStr = parts[1];
+            const amount = parseInt(parts[2].replace(/[^0-9]/g, ""));
+            const itemName = parts.slice(3).join(" ");
+
+            const date = parseJakartaDate(dateStr);
+            if (!date) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
+            if (isNaN(amount)) return bot.sendMessage(chatId, "Invalid amount.");
+
+            await transactions.insertOne({
+                userId,
+                username: msg.from.username || "",
+                type: "expense",
+                item: itemName,
+                amount: amount,
+                category: "manual",
+                createdAt: date
+            });
+
+            return bot.sendMessage(chatId, `Saved to ${dateStr} ✅\n\n${itemName}: Rp${formatCurrency(amount)}`);
         }
 
         // ASK COMMAND
