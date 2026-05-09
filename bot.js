@@ -47,14 +47,26 @@ bot.on("message", async (msg) => {
             const helpMessage = `
 💰 *Money Tracker Bot*
 
-Available Commands:
-/r - Generate spending report
+*Basic Commands:*
 /t or /today - List today's transactions
-/l or /list - List transactions for the last 7 days
-/top <number> - List top most expensive items (default 10)
-/td <number> - Delete today's transaction by list number
-/ask <question> - Ask AI about your expenses
-/h or /help - Show this help message
+/r - Generate spending report
+/l or /list - List summary for last 7 days
+/top <num> - List top expensive items
+/ask <question> - Ask AI about expenses
+
+*Edit & Delete (Today):*
+/td <num> - Delete today's item #num
+/te <num> <new info> - Edit today's item #num
+
+*Edit & Delete (Old Data):*
+/l <n> - List items from n days ago (e.g., /l 1 for yesterday)
+/ld <n> <num> - Delete item #num from n days ago
+/le <n> <num> <new info> - Edit item #num from n days ago
+
+_Examples:_
+- \`/te 1 coffee 20k\` (Update today's 1st item)
+- \`/ld 1 2\` (Delete yesterday's 2nd item)
+- \`/le 1 1 lunch 50k\` (Update yesterday's 1st item)
             `;
             return bot.sendMessage(chatId, helpMessage, { parse_mode: "Markdown" });
         }
@@ -83,7 +95,7 @@ Available Commands:
             const todayData = await transactions.find({ userId, createdAt: { $gte: today } }).sort({ createdAt: 1 }).toArray();
             if (!todayData.length) return bot.sendMessage(chatId, "No transactions today.");
             const list = todayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
-            return bot.sendMessage(chatId, `Today's Transactions:\n\n${list}\n\nUse /td <number> to delete.`);
+            return bot.sendMessage(chatId, `Today's Transactions:\n\n${list}\n\nUse /td <num> to delete or /te <num> <info> to edit.`);
         }
 
         // DELETE TODAY COMMAND (Jakarta)
@@ -98,12 +110,66 @@ Available Commands:
             return bot.sendMessage(chatId, `Deleted 🗑️\n\n${target.item}: Rp${formatCurrency(target.amount)}`);
         }
 
-        // LIST 7 DAYS COMMAND
-        if (text === "/l" || text === "/list") {
-            // Loop from today (0) back to 6 days ago (6)
+        // EDIT TODAY COMMAND (Jakarta)
+        if (text.startsWith("/te ")) {
+            const parts = text.split(" ");
+            const index = parseInt(parts[1]) - 1;
+            const newInfo = parts.slice(2).join(" ");
+            
+            if (isNaN(index) || !newInfo) return bot.sendMessage(chatId, "Usage: /te <number> <new info>\nExample: /te 1 coffee 15k");
+            
+            const today = getStartOfJakartaDay();
+            const todayData = await transactions.find({ userId, createdAt: { $gte: today } }).sort({ createdAt: 1 }).toArray();
+            
+            if (index < 0 || index >= todayData.length) return bot.sendMessage(chatId, "Invalid index.");
+            const target = todayData[index];
+
+            bot.sendChatAction(chatId, "typing");
+            try {
+                const parsed = await parseTransaction(newInfo);
+                if (!parsed || parsed.length === 0) return bot.sendMessage(chatId, "Could not parse new info.");
+                
+                const update = parsed[0];
+                await transactions.updateOne(
+                    { _id: target._id },
+                    { $set: { item: update.item, amount: update.amount, category: update.category, type: update.type } }
+                );
+                return bot.sendMessage(chatId, `Updated ✅\n\nOld: ${target.item} (Rp${formatCurrency(target.amount)})\nNew: ${update.item} (Rp${formatCurrency(update.amount)})`);
+            } catch (err) {
+                return bot.sendMessage(chatId, "Failed to update transaction.");
+            }
+        }
+
+        // LIST COMMAND (Support /l and /l <n>)
+        if (text === "/l" || text === "/list" || (text && text.startsWith("/l "))) {
+            const parts = text.split(" ");
+            const daysAgo = parts.length > 1 ? parseInt(parts[1]) : null;
+
+            if (daysAgo !== null && !isNaN(daysAgo)) {
+                // List specific day
+                const startDate = getStartOfJakartaDayAgo(daysAgo);
+                const endDate = getStartOfJakartaDayAgo(daysAgo - 1);
+                
+                const dayData = await transactions.find({ 
+                    userId, 
+                    createdAt: { $gte: startDate, $lt: endDate } 
+                }).sort({ createdAt: 1 }).toArray();
+
+                if (!dayData.length) return bot.sendMessage(chatId, `No transactions found for ${daysAgo} days ago.`);
+                
+                const dateStr = startDate.toLocaleDateString("id-ID", { 
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' 
+                });
+                const total = totalAmount(dayData);
+                const list = dayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
+                
+                return bot.sendMessage(chatId, `*${dateStr}*\nTotal: Rp${formatCurrency(total)}\n\n${list}\n\nUse /ld ${daysAgo} <num> to delete or /le ${daysAgo} <num> <info> to edit.`, { parse_mode: "Markdown" });
+            }
+
+            // Default: List 7 days summary
             for (let i = 0; i < 7; i++) {
                 const startDate = getStartOfJakartaDayAgo(i);
-                const endDate = getStartOfJakartaDayAgo(i - 1); // Start of next day
+                const endDate = getStartOfJakartaDayAgo(i - 1);
                 
                 const dayData = await transactions.find({ 
                     userId, 
@@ -126,6 +192,63 @@ Available Commands:
                 }
             }
             return;
+        }
+
+        // DELETE OLD COMMAND
+        if (text && text.startsWith("/ld ")) {
+            const parts = text.split(" ");
+            const daysAgo = parseInt(parts[1]);
+            const index = parseInt(parts[2]) - 1;
+
+            if (isNaN(daysAgo) || isNaN(index)) return bot.sendMessage(chatId, "Usage: /ld <days_ago> <number>\nExample: /ld 1 2");
+
+            const startDate = getStartOfJakartaDayAgo(daysAgo);
+            const endDate = getStartOfJakartaDayAgo(daysAgo - 1);
+            const dayData = await transactions.find({ 
+                userId, 
+                createdAt: { $gte: startDate, $lt: endDate } 
+            }).sort({ createdAt: 1 }).toArray();
+
+            if (index < 0 || index >= dayData.length) return bot.sendMessage(chatId, "Invalid index.");
+            const target = dayData[index];
+
+            await transactions.deleteOne({ _id: target._id });
+            return bot.sendMessage(chatId, `Deleted 🗑️\n\n[${daysAgo} days ago] ${target.item}: Rp${formatCurrency(target.amount)}`);
+        }
+
+        // EDIT OLD COMMAND
+        if (text && text.startsWith("/le ")) {
+            const parts = text.split(" ");
+            const daysAgo = parseInt(parts[1]);
+            const index = parseInt(parts[2]) - 1;
+            const newInfo = parts.slice(3).join(" ");
+
+            if (isNaN(daysAgo) || isNaN(index) || !newInfo) return bot.sendMessage(chatId, "Usage: /le <days_ago> <number> <new info>\nExample: /le 1 2 coffee 20k");
+
+            const startDate = getStartOfJakartaDayAgo(daysAgo);
+            const endDate = getStartOfJakartaDayAgo(daysAgo - 1);
+            const dayData = await transactions.find({ 
+                userId, 
+                createdAt: { $gte: startDate, $lt: endDate } 
+            }).sort({ createdAt: 1 }).toArray();
+
+            if (index < 0 || index >= dayData.length) return bot.sendMessage(chatId, "Invalid index.");
+            const target = dayData[index];
+
+            bot.sendChatAction(chatId, "typing");
+            try {
+                const parsed = await parseTransaction(newInfo);
+                if (!parsed || parsed.length === 0) return bot.sendMessage(chatId, "Could not parse new info.");
+                
+                const update = parsed[0];
+                await transactions.updateOne(
+                    { _id: target._id },
+                    { $set: { item: update.item, amount: update.amount, category: update.category, type: update.type } }
+                );
+                return bot.sendMessage(chatId, `Updated ✅\n\nOld: ${target.item} (Rp${formatCurrency(target.amount)})\nNew: ${update.item} (Rp${formatCurrency(update.amount)})`);
+            } catch (err) {
+                return bot.sendMessage(chatId, "Failed to update transaction.");
+            }
         }
 
         // ASK COMMAND
