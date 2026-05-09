@@ -7,7 +7,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const { connectDB } = require("./lib/database");
 const { parseTransaction, askAI } = require("./lib/ai");
 const { generateReport, getTopTransactions } = require("./lib/reporter");
-const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo } = require("./lib/helpers");
+const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo, parseJakartaDate } = require("./lib/helpers");
 const { initMQTT } = require("./lib/mqtt");
 
 // ======================================================
@@ -54,19 +54,20 @@ bot.on("message", async (msg) => {
 /top <num> - List top expensive items
 /ask <question> - Ask AI about expenses
 
-*Edit & Delete (Today):*
-/td <num> - Delete today's item #num
-/te <num> <new info> - Edit today's item #num
-
 *Edit & Delete (Old Data):*
 /l <n> - List items from n days ago (e.g., /l 1 for yesterday)
-/ld <n> <num> - Delete item #num from n days ago
-/le <n> <num> <new info> - Edit item #num from n days ago
+/ld DD/MM/YYYY <num> - Delete item #num on date
+/lev DD/MM/YYYY <num> <value> - Edit item #num VALUE on date
+/len DD/MM/YYYY <num> <name> - Edit item #num NAME on date
+
+*Today's Shortcuts:*
+/td <num> - Delete today's item #num
+/te <num> <info> - Edit today's item #num (AI)
 
 _Examples:_
-- \`/te 1 coffee 20k\` (Update today's 1st item)
-- \`/ld 1 2\` (Delete yesterday's 2nd item)
-- \`/le 1 1 lunch 50k\` (Update yesterday's 1st item)
+- \`/ld 09/05/2026 1\` (Delete item 1 on May 9)
+- \`/lev 09/05/2026 2 25000\` (Update amount of item 2)
+- \`/len 09/05/2026 3 Coffee\` (Update name of item 3)
             `;
             return bot.sendMessage(chatId, helpMessage, { parse_mode: "Markdown" });
         }
@@ -111,12 +112,12 @@ _Examples:_
         }
 
         // EDIT TODAY COMMAND (Jakarta)
-        if (text.startsWith("/te ")) {
+        if (text.startsWith("/te")) {
             const parts = text.split(" ");
+            if (parts.length < 3) return bot.sendMessage(chatId, "Usage: /te <number> <new info>\nExample: /te 1 coffee 15k");
+            
             const index = parseInt(parts[1]) - 1;
             const newInfo = parts.slice(2).join(" ");
-            
-            if (isNaN(index) || !newInfo) return bot.sendMessage(chatId, "Usage: /te <number> <new info>\nExample: /te 1 coffee 15k");
             
             const today = getStartOfJakartaDay();
             const todayData = await transactions.find({ userId, createdAt: { $gte: today } }).sort({ createdAt: 1 }).toArray();
@@ -160,10 +161,12 @@ _Examples:_
                 const dateStr = startDate.toLocaleDateString("id-ID", { 
                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' 
                 });
+                const dateRef = `${startDate.getDate().toString().padStart(2, '0')}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getFullYear()}`;
+                
                 const total = totalAmount(dayData);
                 const list = dayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
                 
-                return bot.sendMessage(chatId, `*${dateStr}*\nTotal: Rp${formatCurrency(total)}\n\n${list}\n\nUse /ld ${daysAgo} <num> to delete or /le ${daysAgo} <num> <info> to edit.`, { parse_mode: "Markdown" });
+                return bot.sendMessage(chatId, `*${dateStr}*\nDate Ref: \`${dateRef}\`\nTotal: Rp${formatCurrency(total)}\n\n${list}\n\nUsage:\n/ld ${dateRef} <num> - Delete\n/lev ${dateRef} <num> <val> - Edit Val\n/len ${dateRef} <num> <name> - Edit Name`, { parse_mode: "Markdown" });
             }
 
             // Default: List 7 days summary
@@ -180,10 +183,11 @@ _Examples:_
                     const dateStr = startDate.toLocaleDateString("id-ID", { 
                         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' 
                     });
+                    const dateRef = `${startDate.getDate().toString().padStart(2, '0')}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getFullYear()}`;
                     const total = totalAmount(dayData);
-                    const items = dayData.map(x => `- ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
+                    const items = dayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
                     
-                    const message = `*${dateStr}*\n(Total: Rp${formatCurrency(total)})\n${items}`;
+                    const message = `*${dateStr}* (\`${dateRef}\`)\n(Total: Rp${formatCurrency(total)})\n${items}`;
                     try {
                         await bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
                     } catch (err) {
@@ -194,16 +198,20 @@ _Examples:_
             return;
         }
 
-        // DELETE OLD COMMAND
-        if (text && text.startsWith("/ld ")) {
+        // DELETE OLD COMMAND (Date Based)
+        if (text && text.startsWith("/ld")) {
             const parts = text.split(" ");
-            const daysAgo = parseInt(parts[1]);
+            if (parts.length < 3) return bot.sendMessage(chatId, "Usage: /ld DD/MM/YYYY <number>\nExample: /ld 09/05/2026 1");
+            
+            const dateStr = parts[1];
             const index = parseInt(parts[2]) - 1;
 
-            if (isNaN(daysAgo) || isNaN(index)) return bot.sendMessage(chatId, "Usage: /ld <days_ago> <number>\nExample: /ld 1 2");
+            const startDate = parseJakartaDate(dateStr);
+            if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
 
-            const startDate = getStartOfJakartaDayAgo(daysAgo);
-            const endDate = getStartOfJakartaDayAgo(daysAgo - 1);
             const dayData = await transactions.find({ 
                 userId, 
                 createdAt: { $gte: startDate, $lt: endDate } 
@@ -213,42 +221,64 @@ _Examples:_
             const target = dayData[index];
 
             await transactions.deleteOne({ _id: target._id });
-            return bot.sendMessage(chatId, `Deleted 🗑️\n\n[${daysAgo} days ago] ${target.item}: Rp${formatCurrency(target.amount)}`);
+            return bot.sendMessage(chatId, `Deleted 🗑️\n\n[${dateStr}] ${target.item}: Rp${formatCurrency(target.amount)}`);
         }
 
-        // EDIT OLD COMMAND
-        if (text && text.startsWith("/le ")) {
+        // EDIT VALUE COMMAND
+        if (text && text.startsWith("/lev")) {
             const parts = text.split(" ");
-            const daysAgo = parseInt(parts[1]);
+            if (parts.length < 4) return bot.sendMessage(chatId, "Usage: /lev DD/MM/YYYY <number> <value>\nExample: /lev 09/05/2026 1 25000");
+
+            const dateStr = parts[1];
             const index = parseInt(parts[2]) - 1;
-            const newInfo = parts.slice(3).join(" ");
+            const newValue = parseInt(parts[3].replace(/[^0-9]/g, ""));
 
-            if (isNaN(daysAgo) || isNaN(index) || !newInfo) return bot.sendMessage(chatId, "Usage: /le <days_ago> <number> <new info>\nExample: /le 1 2 coffee 20k");
+            const startDate = parseJakartaDate(dateStr);
+            if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
 
-            const startDate = getStartOfJakartaDayAgo(daysAgo);
-            const endDate = getStartOfJakartaDayAgo(daysAgo - 1);
             const dayData = await transactions.find({ 
                 userId, 
                 createdAt: { $gte: startDate, $lt: endDate } 
             }).sort({ createdAt: 1 }).toArray();
 
             if (index < 0 || index >= dayData.length) return bot.sendMessage(chatId, "Invalid index.");
+            if (isNaN(newValue)) return bot.sendMessage(chatId, "Invalid value.");
+            
             const target = dayData[index];
+            await transactions.updateOne({ _id: target._id }, { $set: { amount: newValue } });
+            
+            return bot.sendMessage(chatId, `Updated Value ✅\n\n${target.item}: Rp${formatCurrency(target.amount)} -> Rp${formatCurrency(newValue)}`);
+        }
 
-            bot.sendChatAction(chatId, "typing");
-            try {
-                const parsed = await parseTransaction(newInfo);
-                if (!parsed || parsed.length === 0) return bot.sendMessage(chatId, "Could not parse new info.");
-                
-                const update = parsed[0];
-                await transactions.updateOne(
-                    { _id: target._id },
-                    { $set: { item: update.item, amount: update.amount, category: update.category, type: update.type } }
-                );
-                return bot.sendMessage(chatId, `Updated ✅\n\nOld: ${target.item} (Rp${formatCurrency(target.amount)})\nNew: ${update.item} (Rp${formatCurrency(update.amount)})`);
-            } catch (err) {
-                return bot.sendMessage(chatId, "Failed to update transaction.");
-            }
+        // EDIT NAME COMMAND
+        if (text && text.startsWith("/len")) {
+            const parts = text.split(" ");
+            if (parts.length < 4) return bot.sendMessage(chatId, "Usage: /len DD/MM/YYYY <number> <new_name>\nExample: /len 09/05/2026 1 Coffee");
+
+            const dateStr = parts[1];
+            const index = parseInt(parts[2]) - 1;
+            const newName = parts.slice(3).join(" ");
+
+            const startDate = parseJakartaDate(dateStr);
+            if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
+
+            const dayData = await transactions.find({ 
+                userId, 
+                createdAt: { $gte: startDate, $lt: endDate } 
+            }).sort({ createdAt: 1 }).toArray();
+
+            if (index < 0 || index >= dayData.length) return bot.sendMessage(chatId, "Invalid index.");
+            
+            const target = dayData[index];
+            await transactions.updateOne({ _id: target._id }, { $set: { item: newName } });
+            
+            return bot.sendMessage(chatId, `Updated Name ✅\n\nOld: ${target.item}\nNew: ${newName}`);
         }
 
         // ASK COMMAND
