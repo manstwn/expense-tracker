@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tracker Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- ChartJS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-blur-circles">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <main id="login-screen" class="screen active">
+        <div class="login-container glass">
+            <div class="login-header">
+                <div class="logo-wrapper">
+                    <i data-lucide="wallet" class="logo-icon"></i>
+                </div>
+                <h1>Money Tracker</h1>
+                <p>Enter your PIN to access the dashboard</p>
+            </div>
+            
+            <div class="pin-display">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+
+            <div id="login-error" class="error-msg">Invalid PIN. Please try again.</div>
+
+            <div class="keypad">
+                <button class="key-btn" data-val="1">1</button>
+                <button class="key-btn" data-val="2">2</button>
+                <button class="key-btn" data-val="3">3</button>
+                <button class="key-btn" data-val="4">4</button>
+                <button class="key-btn" data-val="5">5</button>
+                <button class="key-btn" data-val="6">6</button>
+                <button class="key-btn" data-val="7">7</button>
+                <button class="key-btn" data-val="8">8</button>
+                <button class="key-btn" data-val="9">9</button>
+                <button class="key-btn secondary-btn" id="key-clear"><i data-lucide="delete"></i></button>
+                <button class="key-btn" data-val="0">0</button>
+                <button class="key-btn secondary-btn" id="key-backspace"><i data-lucide="arrow-left"></i></button>
+            </div>
+        </div>
+    </main>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboard-screen" class="screen">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glass">
+            <div class="sidebar-brand">
+                <i data-lucide="wallet" class="brand-icon"></i>
+                <span>Money Tracker</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="overview">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="transactions">
+                    <i data-lucide="arrow-left-right"></i>
+                    <span>Transactions</span>
+                </button>
+                <button class="nav-item" data-tab="insights">
+                    <i data-lucide="trending-up"></i>
+                    <span>Insights</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="logout-btn">
+                    <i data-lucide="log-out"></i>
+                    <span>Log Out</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h1 id="welcome-message">Financial Overview</h1>
+                    <p>Track, manage, and analyze your transactions</p>
+                </div>
+                <div class="header-actions" style="display: flex; gap: 10px;">
+                    <button id="quick-ai-modal-btn" class="btn btn-secondary">
+                        <i data-lucide="sparkles"></i> Quick AI Parse
+                    </button>
+                    <button id="quick-add-btn" class="btn btn-primary">
+                        <i data-lucide="plus"></i> Add Transaction
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB: OVERVIEW -->
+            <section id="tab-overview" class="tab-pane active">
+                <!-- KPI Summary cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass hover-card">
+                        <div class="kpi-icon-wrapper expense">
+                            <i data-lucide="arrow-down-right"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span>Today's Expenses</span>
+                            <h3 id="kpi-today-expense">Rp0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass hover-card">
+                        <div class="kpi-icon-wrapper expense">
+                            <i data-lucide="calendar"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span>This Month's Expenses</span>
+                            <h3 id="kpi-month-expense">Rp0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass hover-card">
+                        <div class="kpi-icon-wrapper income">
+                            <i data-lucide="arrow-up-right"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span>This Month's Income</span>
+                            <h3 id="kpi-month-income">Rp0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass hover-card">
+                        <div class="kpi-icon-wrapper avg-spend">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span>AVG Spend/Day</span>
+                            <h3 id="kpi-avg-day">Rp0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Section: Chart & Quick AI Input -->
+                <div class="dashboard-grid">
+                    <!-- Chart Section -->
+                    <div class="chart-container glass col-span-2">
+                        <div class="container-header flex-between" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <h3>Last 30 Days Trend</h3>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <!-- Mode Selector -->
+                                <div class="chart-mode-toggle glass" style="display: inline-flex; padding: 2px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                                    <button type="button" id="chart-mode-day" class="btn-toggle active" style="background: transparent; border: none; color: white; padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: var(--transition-smooth); outline: none;">By Day</button>
+                                    <button type="button" id="chart-mode-item" class="btn-toggle" style="background: transparent; border: none; color: var(--text-secondary); padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; transition: var(--transition-smooth); outline: none;">By Item</button>
+                                </div>
+                                <!-- Max Items Selector -->
+                                <div id="chart-max-wrapper" class="select-wrapper" style="display: none; width: auto; max-width: none; margin: 0; position: relative;">
+                                    <select id="chart-max-select" style="padding: 4px 8px 4px 20px; font-size: 11px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; outline: none; cursor: pointer; -webkit-appearance: none;">
+                                        <option value="5">Top 5</option>
+                                        <option value="10" selected>Top 10</option>
+                                        <option value="15">Top 15</option>
+                                        <option value="20">Top 20</option>
+                                    </select>
+                                    <i data-lucide="filter" style="width: 10px; height: 10px; position: absolute; left: 6px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="trend-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Current Day Transactions Section -->
+                    <div class="table-container glass" style="display: flex; flex-direction: column; max-height: 420px;">
+                        <div class="container-header flex-between" style="margin-bottom: 12px; align-items: flex-start;">
+                            <div>
+                                <h3 id="current-day-title">Today's Transactions</h3>
+                                <div id="current-day-total" class="today-total-value">Total Expenses: Rp0</div>
+                            </div>
+                            <span class="badge" id="current-day-badge" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));">Today</span>
+                        </div>
+                        <div class="table-wrapper" style="flex: 1; overflow-y: auto; max-height: 320px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Amount</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="current-day-tbody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Table Layout: Recent Transactions vs Top 10 Most Expensive -->
+                <div class="split-table-grid mt-6">
+                    <!-- Recent Transactions -->
+                    <div class="table-container glass">
+                        <div class="container-header flex-between">
+                            <h3>Recent Transactions</h3>
+                            <button class="btn btn-text" onclick="switchTab('transactions')">View All <i data-lucide="chevron-right"></i></button>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-transactions-tbody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top 10 Most Expensive -->
+                    <div class="table-container glass">
+                        <div class="container-header flex-between">
+                            <h3>Top 10 Most Expensive</h3>
+                            <span class="badge" style="background: linear-gradient(135deg, var(--danger-red), var(--accent-pink));">High Value</span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="top-expensive-tbody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: TRANSACTIONS -->
+            <section id="tab-transactions" class="tab-pane">
+                <div class="table-controls glass">
+                    <div class="filters-group">
+                        <div class="search-box">
+                            <i data-lucide="search" class="search-icon"></i>
+                            <input type="text" id="tx-search-input" placeholder="Search item...">
+                        </div>
+                        
+                        <div class="select-wrapper">
+                            <i data-lucide="user" class="select-icon"></i>
+                            <select id="tx-filter-user">
+                                <option value="">All Users</option>
+                                <!-- Dynamic options -->
+                            </select>
+                        </div>
+
+                        <div class="select-wrapper">
+                            <i data-lucide="list" class="select-icon"></i>
+                            <select id="tx-limit-select">
+                                <option value="10">Show 10</option>
+                                <option value="25">Show 25</option>
+                                <option value="50">Show 50</option>
+                                <option value="100">Show 100</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="actions-group">
+                        <!-- Extra options -->
+                    </div>
+                </div>
+
+                <div class="table-container glass mt-4">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="item">Item <i data-lucide="chevrons-up-down"></i></th>
+                                    <th class="sortable" data-sort="amount">Amount <i data-lucide="chevrons-up-down"></i></th>
+                                    <th class="sortable" data-sort="category">Category <i data-lucide="chevrons-up-down"></i></th>
+                                    <th class="sortable" data-sort="type">Type <i data-lucide="chevrons-up-down"></i></th>
+                                    <th class="sortable" data-sort="username">User <i data-lucide="chevrons-up-down"></i></th>
+                                    <th class="sortable active" data-sort="createdAt">Date <i data-lucide="chevron-down"></i></th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-transactions-tbody">
+                                <!-- Dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination info -->
+                    <div class="table-pagination">
+                        <span id="pagination-info">Showing 0-0 of 0</span>
+                        <div class="pagination-buttons">
+                            <button id="pagination-prev" class="btn btn-icon btn-secondary"><i data-lucide="chevron-left"></i></button>
+                            <button id="pagination-next" class="btn btn-icon btn-secondary"><i data-lucide="chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: INSIGHTS -->
+            <section id="tab-insights" class="tab-pane">
+                <!-- Insight KPIs Row -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span>Top Category</span>
+                            <h3 id="insight-top-category">-</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span>Daily Average</span>
+                            <h3 id="insight-daily-avg">Rp0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span>Avg Tx Value</span>
+                            <h3 id="insight-avg-tx">Rp0</h3>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-content">
+                            <span>Savings Rate</span>
+                            <h3 id="insight-health">-</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Donut Card -->
+                    <div class="chart-container glass">
+                        <div class="container-header">
+                            <h3>Spend Distribution</h3>
+                        </div>
+                        <div class="chart-wrapper donut-wrapper">
+                            <canvas id="category-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Category progress bars list -->
+                    <div class="chart-container glass col-span-2">
+                        <div class="container-header">
+                            <h3>Category Breakdown</h3>
+                        </div>
+                        <div class="category-progress-container" id="category-progress-list">
+                            <!-- Dynamic progress bars -->
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD/EDIT TRANSACTION -->
+    <div id="tx-modal" class="modal-overlay">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Transaction</h3>
+                <button class="modal-close" id="modal-close-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="tx-form">
+                    <input type="hidden" id="form-tx-id">
+                    
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="form-type">Type</label>
+                            <select id="form-type" required>
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="form-category">Category</label>
+                            <select id="form-category" required>
+                                <option value="food">Food & Drinks</option>
+                                <option value="transport">Transport</option>
+                                <option value="shopping">Shopping</option>
+                                <option value="bills">Bills & Utilities</option>
+                                <option value="entertainment">Entertainment</option>
+                                <option value="salary">Salary</option>
+                                <option value="investment">Investment</option>
+                                <option value="manual">Manual / Others</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-item">Item Name</label>
+                        <input type="text" id="form-item" placeholder="e.g. Starbucks Coffee" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-6">
+                            <label for="form-amount">Amount (Rp)</label>
+                            <input type="number" id="form-amount" placeholder="e.g. 35000" min="0" required>
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="form-date">Date & Time</label>
+                            <input type="datetime-local" id="form-date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display: none;">
+                        <div class="form-group col-6">
+                            <label for="form-userid">Telegram User ID</label>
+                            <input type="number" id="form-userid" placeholder="e.g. 1828479746">
+                        </div>
+                        <div class="form-group col-6">
+                            <label for="form-username">Telegram Username</label>
+                            <input type="text" id="form-username" placeholder="e.g. imanstwn">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="form-cancel-btn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: QUICK AI PARSE -->
+    <div id="ai-modal" class="modal-overlay">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3 id="ai-modal-title"><i data-lucide="sparkles" style="color: var(--accent-pink); width: 18px; height: 18px; display: inline-block; vertical-align: sub; margin-right: 6px;"></i>Quick AI Parse</h3>
+                <button class="modal-close" id="ai-modal-close-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="console-desc" style="margin-bottom: 15px; color: var(--text-secondary); font-size: 13px;">
+                    Type your transaction details in natural language (e.g., "bakso 25k, grab 15k, gajian +3jt")
+                </p>
+                <div class="ai-input-group" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                    <textarea id="ai-input-text" placeholder="Type transaction detail..." style="min-height: 100px; width: 100%; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(0, 0, 0, 0.3); color: white; padding: 12px; font-size: 14px; resize: vertical; outline: none;"></textarea>
+                    <button id="ai-parse-btn" class="btn btn-secondary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink)); color: white; border: none;">
+                        <i data-lucide="sparkles"></i> Parse Text
+                    </button>
+                </div>
+                <div id="ai-preview" class="ai-preview-box hidden" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; margin-top: 15px; max-height: 250px; overflow-y: auto;">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV BAR FOR MOBILE -->
+    <nav class="bottom-nav glass">
+        <button class="bottom-nav-item active" data-tab="overview">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Overview</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="transactions">
+            <i data-lucide="arrow-left-right"></i>
+            <span>Txns</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="insights">
+            <i data-lucide="trending-up"></i>
+            <span>Insights</span>
+        </button>
+        <button class="bottom-nav-item" id="mobile-logout-btn">
+            <i data-lucide="log-out"></i>
+            <span>Exit</span>
+        </button>
+    </nav>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast glass">
+        <i id="toast-icon" data-lucide="check-circle-2"></i>
+        <span id="toast-message">Action completed successfully</span>
+    </div>
+
+    <!-- App Script -->
+    <script src="app.js?v=1.1.3"></script>
+</body>
+</html>

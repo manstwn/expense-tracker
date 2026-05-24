@@ -7,8 +7,10 @@ const TelegramBot = require("node-telegram-bot-api");
 const { connectDB } = require("./lib/database");
 const { parseTransaction, askAI } = require("./lib/ai");
 const { generateReport, getTopTransactions } = require("./lib/reporter");
-const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo, parseJakartaDate } = require("./lib/helpers");
+const { formatCurrency, totalAmount, getStartOfJakartaDay, getStartOfJakartaDayAgo, parseJakartaDate, toJakartaDateRef } = require("./lib/helpers");
 const { initMQTT } = require("./lib/mqtt");
+const express = require("express");
+const { initWebServer } = require("./lib/server");
 
 // ======================================================
 // INITIALIZATION
@@ -163,7 +165,7 @@ _Examples:_
                 const dateStr = startDate.toLocaleDateString("id-ID", { 
                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' 
                 });
-                const dateRef = `${startDate.getDate().toString().padStart(2, '0')}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getFullYear()}`;
+                const dateRef = toJakartaDateRef(startDate);
                 
                 const total = totalAmount(dayData);
                 const list = dayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
@@ -185,7 +187,7 @@ _Examples:_
                     const dateStr = startDate.toLocaleDateString("id-ID", { 
                         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' 
                     });
-                    const dateRef = `${startDate.getDate().toString().padStart(2, '0')}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getFullYear()}`;
+                    const dateRef = toJakartaDateRef(startDate);
                     const total = totalAmount(dayData);
                     const items = dayData.map((x, i) => `${i + 1}. ${x.item} (Rp${formatCurrency(x.amount)})`).join("\n");
                     
@@ -211,8 +213,7 @@ _Examples:_
             const startDate = parseJakartaDate(dateStr);
             if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
             
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
+            const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
 
             const dayData = await transactions.find({ 
                 userId, 
@@ -238,8 +239,7 @@ _Examples:_
             const startDate = parseJakartaDate(dateStr);
             if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
             
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
+            const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
 
             const dayData = await transactions.find({ 
                 userId, 
@@ -267,8 +267,7 @@ _Examples:_
             const startDate = parseJakartaDate(dateStr);
             if (!startDate) return bot.sendMessage(chatId, "Invalid date format. Use DD/MM/YYYY");
             
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 1);
+            const endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000);
 
             const dayData = await transactions.find({ 
                 userId, 
@@ -298,7 +297,7 @@ _Examples:_
 
             await transactions.insertOne({
                 userId,
-                username: msg.from.username || "",
+                username: msg.from.username || (userId.toString() === "1828479746" ? "imanstwn" : ""),
                 type: "expense",
                 item: itemName,
                 amount: amount,
@@ -407,7 +406,7 @@ _Examples:_
         const savePromises = parsedItems.map(item => {
             return transactions.insertOne({
                 userId,
-                username: msg.from.username || "",
+                username: msg.from.username || (userId.toString() === "1828479746" ? "imanstwn" : ""),
                 type: item.type,
                 item: item.item,
                 amount: item.amount,
@@ -438,8 +437,23 @@ async function start() {
         transactions = dbInfo.transactions;
         console.log("✅ MongoDB Connected & Reachable");
 
+        // Run database migration to align user names
+        const updateResult = await transactions.updateMany(
+            { userId: 1828479746, $or: [ { username: "" }, { username: { $exists: false } } ] },
+            { $set: { username: "imanstwn" } }
+        );
+        console.log(`✅ DB Migration: Updated ${updateResult.modifiedCount} transactions for user imanstwn.`);
+
         // MQTT INIT
         initMQTT(transactions);
+
+        // WEB SERVER INIT
+        const app = express();
+        initWebServer(app);
+        const port = process.env.PORT || 3000;
+        app.listen(port, () => {
+            console.log(`🌐 Web Dashboard server running at http://localhost:${port}`);
+        });
 
         console.log("🚀 Bot is now running and ready");
     } catch (err) {
