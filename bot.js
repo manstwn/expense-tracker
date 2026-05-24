@@ -455,6 +455,17 @@ async function start() {
             console.log(`🌐 Web Dashboard server running at http://localhost:${port}`);
         });
 
+        // CLOUDFLARE TUNNEL
+        if (process.env.ENV === "prod" && process.env.CL_TUNNEL_TOKEN) {
+            const { spawn } = require("child_process");
+            console.log("🚀 Starting Cloudflare Tunnel...");
+            const tunnel = spawn("cloudflared", ["tunnel", "--token", process.env.CL_TUNNEL_TOKEN, "run"]);
+            
+            tunnel.stdout.on("data", (data) => console.log(`[CF Tunnel]: ${data}`));
+            tunnel.stderr.on("data", (data) => console.error(`[CF Tunnel Error]: ${data}`));
+            tunnel.on("close", (code) => console.log(`[CF Tunnel]: process exited with code ${code}`));
+        }
+
         console.log("🚀 Bot is now running and ready");
     } catch (err) {
         console.error("❌ Startup Failed:");
