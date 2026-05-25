@@ -445,7 +445,12 @@ async function start() {
         console.log(`✅ DB Migration: Updated ${updateResult.modifiedCount} transactions for user imanstwn.`);
 
         // MQTT INIT
-        initMQTT(transactions);
+        if (process.env.MQTT_ENABLED === "true") {
+            initMQTT(transactions);
+            console.log("✅ MQTT Enabled");
+        } else {
+            console.log("⏭️ MQTT Disabled (set MQTT_ENABLED=true to enable)");
+        }
 
         // WEB SERVER INIT
         const app = express();
@@ -458,12 +463,21 @@ async function start() {
         // CLOUDFLARE TUNNEL
         if (process.env.ENV === "prod" && process.env.CL_TUNNEL_TOKEN) {
             const { spawn } = require("child_process");
+            const path = require("path");
             console.log("🚀 Starting Cloudflare Tunnel...");
-            const tunnel = spawn("cloudflared", ["tunnel", "--token", process.env.CL_TUNNEL_TOKEN, "run"]);
             
-            tunnel.stdout.on("data", (data) => console.log(`[CF Tunnel]: ${data}`));
-            tunnel.stderr.on("data", (data) => console.error(`[CF Tunnel Error]: ${data}`));
-            tunnel.on("close", (code) => console.log(`[CF Tunnel]: process exited with code ${code}`));
+            try {
+                // Use locally installed cloudflared from node_modules
+                const cloudflaredBin = path.join(__dirname, "node_modules", "cloudflared", "bin", "cloudflared" + (process.platform === "win32" ? ".exe" : ""));
+                const tunnel = spawn(cloudflaredBin, ["tunnel", "run", "--token", process.env.CL_TUNNEL_TOKEN]);
+                
+                tunnel.stdout.on("data", (data) => console.log(`[CF Tunnel]: ${data}`));
+                tunnel.stderr.on("data", (data) => console.error(`[CF Tunnel]: ${data}`));
+                tunnel.on("error", (err) => console.error(`[CF Tunnel Failed to Start]: ${err.message}`));
+                tunnel.on("close", (code) => console.log(`[CF Tunnel]: process exited with code ${code}`));
+            } catch (err) {
+                console.error(`[CF Tunnel]: Error spawning cloudflared: ${err.message}`);
+            }
         }
 
         console.log("🚀 Bot is now running and ready");
