@@ -113,8 +113,9 @@ document.addEventListener("DOMContentLoaded", () => {
     initKeypad();
     initTabs();
     initModal();
+    initFoodModal(); // New
     initFilters();
-    initPagination();
+    // initPagination(); // Removed for simplicity
     initAIParser();
     initChartToggle();
     createIconsSafe();
@@ -126,6 +127,34 @@ document.addEventListener("DOMContentLoaded", () => {
         showScreen("login");
     }
 });
+
+function initFoodModal() {
+    const addFoodBtn = document.getElementById("quick-add-food-btn");
+    const foodModal = document.getElementById("food-modal");
+    const foodCloseBtn = document.getElementById("food-modal-close-btn");
+    const foodCancelBtn = document.getElementById("food-form-cancel-btn");
+    const foodForm = document.getElementById("food-form");
+
+    if (addFoodBtn) addFoodBtn.addEventListener("click", () => foodModal.classList.add("active"));
+    if (foodCloseBtn) foodCloseBtn.addEventListener("click", () => foodModal.classList.remove("active"));
+    if (foodCancelBtn) foodCancelBtn.addEventListener("click", () => foodModal.classList.remove("active"));
+    
+    foodForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const foodName = document.getElementById("food-form-name").value;
+        const category = document.getElementById("food-form-category").value;
+        
+        try {
+            await apiCall("/api/food/logs", "POST", { foodName, category });
+            showToast("Food logged successfully", "success");
+            foodModal.classList.remove("active");
+            foodForm.reset();
+            fetchFoodLogs();
+        } catch (err) {
+            showToast("Failed to log food", "error");
+        }
+    });
+}
 
 // Helper: Show specific screen
 function showScreen(screen) {
@@ -335,10 +364,13 @@ function switchTab(tab) {
 // FOOD LOGS FETCH & VIEW
 // ======================================================
 async function fetchFoodLogs() {
+    console.log("Fetching food logs...");
     try {
         const logs = await apiCall("/api/food/logs");
+        console.log("Fetched food logs:", logs);
         renderFoodLogsTable(logs);
     } catch (err) {
+        console.error("Failed to fetch food logs:", err);
         showToast("Failed to fetch food logs", "error");
     }
 }
@@ -714,31 +746,16 @@ async function fetchUsers() {
 // ======================================================
 async function fetchTransactions() {
     try {
-        const params = new URLSearchParams();
-        if (state.filters.search) params.append("search", state.filters.search);
-        if (state.filters.userId) params.append("userId", state.filters.userId);
-        params.append("sortBy", state.filters.sortBy);
-        params.append("sortOrder", state.filters.sortOrder.toString());
-        
-        // Pagination logic for full tab
-        if (state.currentTab === "transactions") {
-            params.append("limit", state.filters.limit.toString());
-            params.append("skip", state.filters.skip.toString());
-        } else {
-            // For overview mini list, fetch latest 10 items
-            params.append("limit", "10");
-            params.append("skip", "0");
-        }
-        
-        const data = await apiCall(`/api/transactions?${params.toString()}`);
+        const data = await apiCall(`/api/transactions`);
         
         if (state.currentTab === "transactions") {
             state.transactions = data.transactions;
             state.totalTransactions = data.total;
             renderAllTransactionsTable();
-            updatePaginationControls();
+            // No pagination needed
         } else {
-            renderRecentTransactionsMiniTable(data.transactions);
+            // For overview mini list, take latest 10 items
+            renderRecentTransactionsMiniTable(data.transactions.slice(0, 10));
         }
     } catch (err) {
         showToast("Failed to fetch transactions list", "error");
