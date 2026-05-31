@@ -345,7 +345,10 @@ async function fetchFoodLogs() {
 
 function renderFoodLogsTable(logs) {
     const tbody = document.getElementById("food-logs-tbody");
-    if (!tbody) return;
+    if (!tbody) {
+        console.error("food-logs-tbody element not found");
+        return;
+    }
     
     tbody.innerHTML = "";
     if (logs.length === 0) {
