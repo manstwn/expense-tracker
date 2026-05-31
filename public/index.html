@@ -76,6 +76,10 @@
                     <i data-lucide="arrow-left-right"></i>
                     <span>Transactions</span>
                 </button>
+                <button class="nav-item" data-tab="food">
+                    <i data-lucide="apple"></i>
+                    <span>Food Tracker</span>
+                </button>
                 <button class="nav-item" data-tab="insights">
                     <i data-lucide="trending-up"></i>
                     <span>Insights</span>
@@ -316,6 +320,29 @@
                 </div>
             </section>
 
+            <!-- TAB: FOOD TRACKER -->
+            <section id="tab-food" class="tab-pane">
+                <div class="container-header">
+                    <h3>Food Intake Logs</h3>
+                </div>
+                <div class="table-container glass mt-4">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Food</th>
+                                    <th>Category</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="food-logs-tbody">
+                                <!-- Dynamic -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- TAB: INSIGHTS -->
             <section id="tab-insights" class="tab-pane">
                 <!-- Insight KPIs Row -->
@@ -475,6 +502,10 @@
         <button class="bottom-nav-item" data-tab="transactions">
             <i data-lucide="arrow-left-right"></i>
             <span>Txns</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="food">
+            <i data-lucide="apple"></i>
+            <span>Food</span>
         </button>
         <button class="bottom-nav-item" data-tab="insights">
             <i data-lucide="trending-up"></i>

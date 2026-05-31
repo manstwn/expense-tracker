@@ -326,7 +326,45 @@ function switchTab(tab) {
         fetchCurrentDayTransactions();
     } else if (tab === "insights") {
         fetchStats();
+    } else if (tab === "food") {
+        fetchFoodLogs();
     }
+}
+
+// ======================================================
+// FOOD LOGS FETCH & VIEW
+// ======================================================
+async function fetchFoodLogs() {
+    try {
+        const logs = await apiCall("/api/food/logs");
+        renderFoodLogsTable(logs);
+    } catch (err) {
+        showToast("Failed to fetch food logs", "error");
+    }
+}
+
+function renderFoodLogsTable(logs) {
+    const tbody = document.getElementById("food-logs-tbody");
+    if (!tbody) return;
+    
+    tbody.innerHTML = "";
+    if (logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary)">No food logs found</td></tr>`;
+        return;
+    }
+    
+    logs.forEach(log => {
+        const d = new Date(log.createdAt);
+        const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${escapeHtml(log.foodName)}</strong></td>
+            <td><span class="tx-badge">${escapeHtml(log.category)}</span></td>
+            <td>${dateStr}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 // ======================================================
