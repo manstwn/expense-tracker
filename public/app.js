@@ -6,6 +6,7 @@ const state = {
     stats: null,
     users: [],
     transactions: [],
+    allTransactions: [],
     totalTransactions: 0,
     filters: {
         search: "",
@@ -212,12 +213,12 @@ async function verifySession() {
 }
 
 // Load Dashboard Data
-function loadDashboardData() {
+async function loadDashboardData() {
     fetchStats();
     fetchUsers();
-    fetchTransactions();
-    fetchTopExpenses();
-    fetchCurrentDayTransactions();
+    await fetchTransactions(); // Wait for all data before deriving views
+    renderCurrentDayFromState(); // Filter today's transactions from state
+    renderTopExpensesFromState(); // Sort top expenses from state
 }
 
 // Logout
@@ -352,7 +353,10 @@ function switchTab(tab) {
         fetchTransactions();
     } else if (tab === "overview") {
         fetchStats();
-        fetchCurrentDayTransactions();
+        // Re-render overview derived views from cached state
+        renderRecentTransactionsMiniTable(state.allTransactions.slice(0, 10));
+        renderCurrentDayFromState();
+        renderTopExpensesFromState();
     } else if (tab === "insights") {
         fetchStats();
     } else if (tab === "food") {
@@ -523,7 +527,7 @@ function renderTrendChart(chartData) {
                     const index = activePoint.index;
                     const clickedData = displayData[index];
                     if (state.chartMode === "day" && clickedData && clickedData.date) {
-                        fetchCurrentDayTransactions(clickedData.date);
+                        renderCurrentDayFromState(clickedData.date);
                     }
                 }
             },
@@ -747,12 +751,13 @@ async function fetchUsers() {
 async function fetchTransactions() {
     try {
         const data = await apiCall(`/api/transactions`);
+        // Always store the full dump for client-side filtering
+        state.allTransactions = data.transactions;
+        state.totalTransactions = data.total;
         
         if (state.currentTab === "transactions") {
             state.transactions = data.transactions;
-            state.totalTransactions = data.total;
             renderAllTransactionsTable();
-            // No pagination needed
         } else {
             // For overview mini list, take latest 10 items
             renderRecentTransactionsMiniTable(data.transactions.slice(0, 10));
@@ -1214,13 +1219,12 @@ function escapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
 }
 
-async function fetchTopExpenses() {
-    try {
-        const topExpenses = await apiCall("/api/transactions/top");
-        renderTopExpensiveTable(topExpenses);
-    } catch (err) {
-        console.error("Failed to fetch top expenses:", err);
-    }
+function renderTopExpensesFromState() {
+    const topExpenses = (state.allTransactions || [])
+        .filter(t => t.type === "expense")
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 10);
+    renderTopExpensiveTable(topExpenses);
 }
 
 function renderTopExpensiveTable(transactions) {
@@ -1284,48 +1288,58 @@ function initChartToggle() {
     });
 }
 
-// Current Day / Clicked Day Transactions Helpers
-function getTodayDateStr() {
-    // Explicitly format in Jakarta timezone to match backend grouping
+// ======================================================
+// CLIENT-SIDE DATE HELPERS & DAY-FILTERED RENDERING
+// ======================================================
+
+// Convert any Date to YYYY-MM-DD string in Jakarta timezone
+function toJakartaDateStrClient(date) {
+    const d = date instanceof Date ? date : new Date(date);
     const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Jakarta",
         year: "numeric",
         month: "2-digit",
         day: "2-digit"
-    }).formatToParts(new Date());
+    }).formatToParts(d);
     const map = {};
     parts.forEach(({ type, value }) => (map[type] = value));
     return `${map.year}-${map.month}-${map.day}`;
 }
 
-async function fetchCurrentDayTransactions(dateStr) {
-    try {
-        const dateToQuery = dateStr || getTodayDateStr();
-        
-        const titleEl = document.getElementById("current-day-title");
-        const badgeEl = document.getElementById("current-day-badge");
-        
-        const todayStr = getTodayDateStr();
-        if (dateToQuery === todayStr) {
-            if (titleEl) titleEl.textContent = "Today's Transactions";
-            if (badgeEl) {
-                badgeEl.textContent = "Today";
-                badgeEl.style.background = "linear-gradient(135deg, var(--accent-purple), var(--accent-pink))";
-            }
-        } else {
-            const displayDate = new Date(dateToQuery + "T00:00:00+07:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
-            if (titleEl) titleEl.textContent = `Transactions on ${displayDate}`;
-            if (badgeEl) {
-                badgeEl.textContent = "Selected Day";
-                badgeEl.style.background = "linear-gradient(135deg, var(--accent-blue, #3b82f6), var(--accent-purple))";
-            }
-        }
+function getTodayDateStr() {
+    return toJakartaDateStrClient(new Date());
+}
 
-        const data = await apiCall(`/api/transactions?date=${dateToQuery}&limit=100`);
-        renderCurrentDayTable(data.transactions);
-    } catch (err) {
-        console.error("Failed to fetch current day transactions:", err);
+// Render current-day transactions panel by filtering from state (no API call)
+function renderCurrentDayFromState(dateStr) {
+    const dateToQuery = dateStr || getTodayDateStr();
+    
+    const titleEl = document.getElementById("current-day-title");
+    const badgeEl = document.getElementById("current-day-badge");
+    
+    const todayStr = getTodayDateStr();
+    if (dateToQuery === todayStr) {
+        if (titleEl) titleEl.textContent = "Today's Transactions";
+        if (badgeEl) {
+            badgeEl.textContent = "Today";
+            badgeEl.style.background = "linear-gradient(135deg, var(--accent-purple), var(--accent-pink))";
+        }
+    } else {
+        const displayDate = new Date(dateToQuery + "T00:00:00+07:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+        if (titleEl) titleEl.textContent = `Transactions on ${displayDate}`;
+        if (badgeEl) {
+            badgeEl.textContent = "Selected Day";
+            badgeEl.style.background = "linear-gradient(135deg, var(--accent-blue, #3b82f6), var(--accent-purple))";
+        }
     }
+    
+    // Filter transactions from state by Jakarta date
+    const filtered = (state.allTransactions || []).filter(t => {
+        if (!t.createdAt) return false;
+        return toJakartaDateStrClient(new Date(t.createdAt)) === dateToQuery;
+    });
+    
+    renderCurrentDayTable(filtered);
 }
 
 function renderCurrentDayTable(transactions) {
