@@ -1344,23 +1344,23 @@ table:has(#current-day-tbody) th {
         left: 8px;
     }
     
-    /* Ultra-Compact Mobile Cards for Transactions Table */
-    .data-table, 
-    .data-table thead, 
-    .data-table tbody, 
-    .data-table th, 
-    .data-table td, 
-    .data-table tr {
+    /* ===== FULL TRANSACTIONS TABLE (7 columns) – Mobile Card Layout ===== */
+    #tab-transactions .data-table,
+    #tab-transactions .data-table thead,
+    #tab-transactions .data-table tbody,
+    #tab-transactions .data-table th,
+    #tab-transactions .data-table td,
+    #tab-transactions .data-table tr {
         display: block;
     }
-    
-    .data-table thead {
-        display: none; /* Hide table headers */
+
+    #tab-transactions .data-table thead {
+        display: none;
     }
-    
-    .data-table tbody tr {
+
+    #tab-transactions .data-table tbody tr {
         display: grid;
-        grid-template-areas: 
+        grid-template-areas:
             "item amount"
             "user actions";
         grid-template-columns: 1fr auto;
@@ -1372,23 +1372,22 @@ table:has(#current-day-tbody) th {
         position: relative;
     }
 
-    .data-table tbody tr.day-group-1 {
+    #tab-transactions .data-table tbody tr.day-group-1 {
         background: rgba(217, 70, 239, 0.03) !important;
         border-left: 4px solid var(--accent-pink) !important;
     }
 
-    .data-table tbody tr.day-group-2 {
+    #tab-transactions .data-table tbody tr.day-group-2 {
         background: rgba(139, 92, 246, 0.05) !important;
         border-left: 4px solid var(--accent-purple) !important;
     }
-    
-    .data-table td {
+
+    #tab-transactions .data-table td {
         padding: 0 !important;
         border: none !important;
     }
-    
-    /* Column Grid Positioning */
-    .data-table td:nth-child(1) {
+
+    #tab-transactions .data-table td:nth-child(1) {
         grid-area: item;
         font-size: 13px;
         font-weight: 600;
@@ -1397,33 +1396,33 @@ table:has(#current-day-tbody) th {
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    
-    .data-table td:nth-child(2) {
+
+    #tab-transactions .data-table td:nth-child(2) {
         grid-area: amount;
         font-size: 13px;
         font-weight: 700;
         text-align: right;
     }
-    
-    .data-table td:nth-child(3), /* Category */
-    .data-table td:nth-child(4), /* Type */
-    .data-table td:nth-child(6)  /* Date - Hidden to save space */ {
-        display: none; /* Hide columns */
+
+    #tab-transactions .data-table td:nth-child(3),
+    #tab-transactions .data-table td:nth-child(4),
+    #tab-transactions .data-table td:nth-child(6) {
+        display: none;
     }
-    
-    .data-table td:nth-child(5) {
+
+    #tab-transactions .data-table td:nth-child(5) {
         grid-area: user;
         display: flex;
         align-items: center;
     }
-    
-    .data-table td:nth-child(7) {
+
+    #tab-transactions .data-table td:nth-child(7) {
         grid-area: actions;
         display: flex;
         justify-content: flex-end;
         gap: 6px;
     }
-    
+
     .action-btn {
         padding: 4px 6px;
         background: transparent;
@@ -1433,19 +1432,102 @@ table:has(#current-day-tbody) th {
         align-items: center;
         gap: 0;
     }
-    
+
     .action-btn i {
         width: 14px;
         height: 14px;
     }
-    
-    /* Remove labels completely on ultra mobile view */
+
     .action-btn.edit::after {
         content: "" !important;
     }
-    
+
     .action-btn.delete::after {
         content: "" !important;
+    }
+
+    /* ===== MINI TABLES (3-col: overview, food, top-expensive) – Simple Card ===== */
+    #tab-overview .data-table,
+    #tab-food .data-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    #tab-overview .data-table thead,
+    #tab-food .data-table thead {
+        display: none;
+    }
+
+    #tab-overview .data-table,
+    #tab-overview .data-table tbody,
+    #tab-overview .data-table tr,
+    #tab-overview .data-table td,
+    #tab-food .data-table,
+    #tab-food .data-table tbody,
+    #tab-food .data-table tr,
+    #tab-food .data-table td {
+        display: block;
+    }
+
+    #tab-overview .data-table tbody tr,
+    #tab-food .data-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 2px 8px;
+        padding: 8px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 6px;
+    }
+
+    #tab-overview .data-table tbody tr.day-group-1,
+    #tab-food .data-table tbody tr.day-group-1 {
+        background: rgba(217, 70, 239, 0.03) !important;
+        border-left: 4px solid var(--accent-pink) !important;
+    }
+
+    #tab-overview .data-table tbody tr.day-group-2,
+    #tab-food .data-table tbody tr.day-group-2 {
+        background: rgba(139, 92, 246, 0.05) !important;
+        border-left: 4px solid var(--accent-purple) !important;
+    }
+
+    #tab-overview .data-table td,
+    #tab-food .data-table td {
+        padding: 0 !important;
+        border: none !important;
+    }
+
+    /* col1 = item/food name (top-left) */
+    #tab-overview .data-table td:nth-child(1),
+    #tab-food .data-table td:nth-child(1) {
+        grid-column: 1;
+        grid-row: 1;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* col2 = amount/category (top-right) */
+    #tab-overview .data-table td:nth-child(2),
+    #tab-food .data-table td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: right;
+    }
+
+    /* col3 = date/time (bottom, full-width) */
+    #tab-overview .data-table td:nth-child(3),
+    #tab-food .data-table td:nth-child(3) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        font-size: 11px;
+        color: var(--text-secondary);
     }
     
     /* Pagination adjustments */
