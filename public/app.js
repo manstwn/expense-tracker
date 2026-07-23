@@ -78,7 +78,8 @@ const el = {
     formCategory: document.getElementById("form-category"),
     formItem: document.getElementById("form-item"),
     formAmount: document.getElementById("form-amount"),
-    formDate: document.getElementById("form-date"),
+    formDateOnly: document.getElementById("form-date-only"),
+    formTimeOnly: document.getElementById("form-time-only"),
     formUserId: document.getElementById("form-userid"),
     formUsername: document.getElementById("form-username"),
     
@@ -1090,8 +1091,20 @@ function openAddModal() {
     el.formId.value = "";
     el.form.reset();
     
-    // Set default date-time to now in local user's timezone
-    el.formDate.value = toDatetimeLocalValue(new Date());
+    // Set default date and time in Jakarta timezone
+    const now = new Date();
+    const jStr = toJakartaDateStrClient(now);
+    const parts = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    }).formatToParts(now);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+
+    if (el.formDateOnly) el.formDateOnly.value = jStr;
+    if (el.formTimeOnly) el.formTimeOnly.value = `${p.hour}:${p.minute}`;
     
     // Prefill user data automatically
     el.formUserId.value = "1828479746";
@@ -1111,7 +1124,19 @@ function openEditModal(tx) {
     el.formUserId.value = tx.userId || "";
     el.formUsername.value = tx.username || "";
     
-    el.formDate.value = toDatetimeLocalValue(tx.createdAt);
+    const dateObj = tx.createdAt ? new Date(tx.createdAt) : new Date();
+    const jStr = toJakartaDateStrClient(dateObj);
+    const parts = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    }).formatToParts(dateObj);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+
+    if (el.formDateOnly) el.formDateOnly.value = jStr;
+    if (el.formTimeOnly) el.formTimeOnly.value = `${p.hour}:${p.minute}`;
     
     el.modal.classList.add("active");
 }
@@ -1124,12 +1149,18 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     
     const id = el.formId.value;
+    const dateVal = el.formDateOnly.value || getTodayDateStr();
+    const timeVal = el.formTimeOnly.value || "00:00";
+    
+    // Parse selected date and time in Jakarta timezone (+07:00)
+    const createdAtIso = new Date(`${dateVal}T${timeVal}:00+07:00`).toISOString();
+
     const body = {
         type: el.formType.value,
         category: el.formCategory.value,
         item: el.formItem.value,
         amount: parseFloat(el.formAmount.value),
-        createdAt: new Date(el.formDate.value).toISOString(),
+        createdAt: createdAtIso,
         userId: el.formUserId.value ? parseInt(el.formUserId.value) : null,
         username: el.formUsername.value.trim()
     };

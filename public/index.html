@@ -208,56 +208,9 @@
                     </div>
                 </div>
 
-                <!-- Calendar Section: Monthly Expense Calendar -->
-                <div class="calendar-container glass mt-6">
-                    <div class="calendar-header">
-                        <div class="calendar-title-group">
-                            <h3 id="calendar-month-year">Kalender Pengeluaran</h3>
-                            <span class="badge calendar-summary-badge" id="calendar-month-total">Total: Rp0</span>
-                        </div>
-                        <div class="calendar-controls">
-                            <button id="calendar-prev-btn" class="btn-icon-sm" title="Bulan Sebelumnya"><i data-lucide="chevron-left"></i></button>
-                            <button id="calendar-today-btn" class="btn-secondary-sm">Hari Ini</button>
-                            <button id="calendar-next-btn" class="btn-icon-sm" title="Bulan Berikutnya"><i data-lucide="chevron-right"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- Calendar Summary Stats Bar -->
-                    <div class="calendar-stats-bar">
-                        <div class="cal-stat-item">
-                            <span class="cal-stat-label">Rata-rata Harian</span>
-                            <span class="cal-stat-val" id="cal-stat-avg">Rp0</span>
-                        </div>
-                        <div class="cal-stat-item">
-                            <span class="cal-stat-label">Pengeluaran Tertinggi</span>
-                            <span class="cal-stat-val" id="cal-stat-peak">-</span>
-                        </div>
-                        <div class="cal-stat-item">
-                            <span class="cal-stat-label">Hari Aktif</span>
-                            <span class="cal-stat-val" id="cal-stat-days">0 hari</span>
-                        </div>
-                    </div>
-
-                    <!-- Calendar Grid -->
-                    <div class="calendar-grid-wrapper">
-                        <div class="calendar-weekdays">
-                            <div>Minggu</div>
-                            <div>Senin</div>
-                            <div>Selasa</div>
-                            <div>Rabu</div>
-                            <div>Kamis</div>
-                            <div>Jumat</div>
-                            <div>Sabtu</div>
-                        </div>
-                        <div id="calendar-days-grid" class="calendar-days-grid">
-                            <!-- Dynamic calendar day cells -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Split Table Layout: Recent Transactions vs Top 10 Most Expensive -->
-                <div class="split-table-grid mt-6">
-                    <!-- Recent Transactions -->
+                <!-- 3-Column Dashboard Section: Recent Transactions | Kalender Pengeluaran | Top 10 Most Expensive -->
+                <div class="dashboard-three-cols mt-6">
+                    <!-- Column 1: Recent Transactions -->
                     <div class="table-container glass">
                         <div class="container-header flex-between">
                             <h3>Recent Transactions</h3>
@@ -279,7 +232,54 @@
                         </div>
                     </div>
 
-                    <!-- Top 10 Most Expensive -->
+                    <!-- Column 2 (Middle): Kalender Pengeluaran -->
+                    <div class="calendar-container glass">
+                        <div class="calendar-header">
+                            <div class="calendar-title-group">
+                                <h3 id="calendar-month-year">Kalender Pengeluaran</h3>
+                                <span class="badge calendar-summary-badge" id="calendar-month-total">Total: Rp0</span>
+                            </div>
+                            <div class="calendar-controls">
+                                <button id="calendar-prev-btn" class="btn-icon-sm" title="Bulan Sebelumnya"><i data-lucide="chevron-left"></i></button>
+                                <button id="calendar-today-btn" class="btn-secondary-sm">Hari Ini</button>
+                                <button id="calendar-next-btn" class="btn-icon-sm" title="Bulan Berikutnya"><i data-lucide="chevron-right"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Summary Stats Bar -->
+                        <div class="calendar-stats-bar">
+                            <div class="cal-stat-item">
+                                <span class="cal-stat-label">Rata-rata Harian</span>
+                                <span class="cal-stat-val" id="cal-stat-avg">Rp0</span>
+                            </div>
+                            <div class="cal-stat-item">
+                                <span class="cal-stat-label">Pengeluaran Tertinggi</span>
+                                <span class="cal-stat-val" id="cal-stat-peak">-</span>
+                            </div>
+                            <div class="cal-stat-item">
+                                <span class="cal-stat-label">Hari Aktif</span>
+                                <span class="cal-stat-val" id="cal-stat-days">0 hari</span>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div class="calendar-grid-wrapper">
+                            <div class="calendar-weekdays">
+                                <div>Minggu</div>
+                                <div>Senin</div>
+                                <div>Selasa</div>
+                                <div>Rabu</div>
+                                <div>Kamis</div>
+                                <div>Jumat</div>
+                                <div>Sabtu</div>
+                            </div>
+                            <div id="calendar-days-grid" class="calendar-days-grid">
+                                <!-- Dynamic calendar day cells -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Top 10 Most Expensive -->
                     <div class="table-container glass">
                         <div class="container-header flex-between">
                             <h3>Top 10 Most Expensive</h3>
@@ -523,8 +523,22 @@
                             <input type="number" id="form-amount" placeholder="e.g. 35000" min="0" required>
                         </div>
                         <div class="form-group col-6">
-                            <label for="form-date">Date & Time</label>
-                            <input type="datetime-local" id="form-date" required>
+                            <div class="form-row" style="margin: 0;">
+                                <div style="flex: 1; padding-right: 4px;">
+                                    <label for="form-date-only">Date (Calendar)</label>
+                                    <div style="position: relative;">
+                                        <i data-lucide="calendar" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none;"></i>
+                                        <input type="date" id="form-date-only" required onclick="this.showPicker && this.showPicker()" style="padding-left: 30px; cursor: pointer; color-scheme: dark;">
+                                    </div>
+                                </div>
+                                <div style="flex: 1; padding-left: 4px;">
+                                    <label for="form-time-only">Time</label>
+                                    <div style="position: relative;">
+                                        <i data-lucide="clock" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none;"></i>
+                                        <input type="time" id="form-time-only" required onclick="this.showPicker && this.showPicker()" style="padding-left: 30px; cursor: pointer; color-scheme: dark;">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
