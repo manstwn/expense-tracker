@@ -187,24 +187,70 @@
                     <div class="table-container glass" style="display: flex; flex-direction: column; max-height: 420px;">
                         <div class="container-header flex-between" style="margin-bottom: 12px; align-items: flex-start;">
                             <div>
-                                <h3 id="current-day-title">Today's Transactions</h3>
-                                <div id="current-day-total" class="today-total-value">Total Expenses: Rp0</div>
+                                <h3 id="current-day-title">Transaksi Hari Ini</h3>
+                                <div id="current-day-total" class="today-total-value">Total Pengeluaran: Rp0</div>
                             </div>
-                            <span class="badge" id="current-day-badge" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));">Today</span>
+                            <span class="badge" id="current-day-badge" style="background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));">Hari Ini</span>
                         </div>
                         <div class="table-wrapper" style="flex: 1; overflow-y: auto; max-height: 320px;">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th>Item</th>
-                                        <th>Amount</th>
-                                        <th>Time</th>
+                                        <th>Jumlah</th>
+                                        <th>Waktu</th>
                                     </tr>
                                 </thead>
                                 <tbody id="current-day-tbody">
                                     <!-- Dynamic -->
                                 </tbody>
                             </table>
+                    </div>
+                </div>
+
+                <!-- Calendar Section: Monthly Expense Calendar -->
+                <div class="calendar-container glass mt-6">
+                    <div class="calendar-header">
+                        <div class="calendar-title-group">
+                            <h3 id="calendar-month-year">Kalender Pengeluaran</h3>
+                            <span class="badge calendar-summary-badge" id="calendar-month-total">Total: Rp0</span>
+                        </div>
+                        <div class="calendar-controls">
+                            <button id="calendar-prev-btn" class="btn-icon-sm" title="Bulan Sebelumnya"><i data-lucide="chevron-left"></i></button>
+                            <button id="calendar-today-btn" class="btn-secondary-sm">Hari Ini</button>
+                            <button id="calendar-next-btn" class="btn-icon-sm" title="Bulan Berikutnya"><i data-lucide="chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Summary Stats Bar -->
+                    <div class="calendar-stats-bar">
+                        <div class="cal-stat-item">
+                            <span class="cal-stat-label">Rata-rata Harian</span>
+                            <span class="cal-stat-val" id="cal-stat-avg">Rp0</span>
+                        </div>
+                        <div class="cal-stat-item">
+                            <span class="cal-stat-label">Pengeluaran Tertinggi</span>
+                            <span class="cal-stat-val" id="cal-stat-peak">-</span>
+                        </div>
+                        <div class="cal-stat-item">
+                            <span class="cal-stat-label">Hari Aktif</span>
+                            <span class="cal-stat-val" id="cal-stat-days">0 hari</span>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div class="calendar-grid-wrapper">
+                        <div class="calendar-weekdays">
+                            <div>Minggu</div>
+                            <div>Senin</div>
+                            <div>Selasa</div>
+                            <div>Rabu</div>
+                            <div>Kamis</div>
+                            <div>Jumat</div>
+                            <div>Sabtu</div>
+                        </div>
+                        <div id="calendar-days-grid" class="calendar-days-grid">
+                            <!-- Dynamic calendar day cells -->
                         </div>
                     </div>
                 </div>
@@ -275,12 +321,18 @@
                         </div>
 
                         <div class="select-wrapper">
+                            <i data-lucide="calendar" class="select-icon"></i>
+                            <input type="date" id="tx-filter-date" title="Filter by date">
+                        </div>
+
+                        <div class="select-wrapper">
                             <i data-lucide="list" class="select-icon"></i>
                             <select id="tx-limit-select">
                                 <option value="10">Show 10</option>
                                 <option value="25">Show 25</option>
                                 <option value="50">Show 50</option>
                                 <option value="100">Show 100</option>
+                                <option value="99999">Show All</option>
                             </select>
                         </div>
                     </div>
@@ -515,6 +567,36 @@
                 </div>
                 <div id="ai-preview" class="ai-preview-box hidden" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; margin-top: 15px; max-height: 250px; overflow-y: auto;">
                     <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CALENDAR DAY DETAILS -->
+    <div id="calendar-day-modal" class="modal-overlay">
+        <div class="modal-content glass" style="max-width: 520px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="cal-modal-date-title">Date Details</h3>
+                    <p id="cal-modal-date-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Transactions breakdown for selected day</p>
+                </div>
+                <button class="modal-close" id="cal-modal-close-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div id="cal-modal-total" style="font-size: 16px; font-weight: 700; color: #ff4a9e; margin-bottom: 12px;">Total: Rp0</div>
+                <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cal-modal-tbody">
+                            <!-- Dynamic items list -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

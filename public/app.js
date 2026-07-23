@@ -11,6 +11,7 @@ const state = {
     filters: {
         search: "",
         userId: "",
+        date: "",
         sortBy: "createdAt",
         sortOrder: -1,
         limit: 10,
@@ -22,7 +23,8 @@ const state = {
     },
     tempParsedItems: [], // Store temporary items returned from AI Quick Parse
     chartMode: "day", // "day" or "item"
-    chartMaxItems: 10 // Default to top 10 items
+    chartMaxItems: 10, // Default to top 10 items
+    calendarDate: new Date()
 };
 
 // Elements
@@ -52,6 +54,7 @@ const el = {
     // Filters & Pagination
     txSearch: document.getElementById("tx-search-input"),
     txFilterUser: document.getElementById("tx-filter-user"),
+    txFilterDate: document.getElementById("tx-filter-date"),
     txLimitSelect: document.getElementById("tx-limit-select"),
     sortHeaders: document.querySelectorAll("th.sortable"),
     paginationInfo: document.getElementById("pagination-info"),
@@ -93,7 +96,23 @@ const el = {
     // AI Modal Elements
     aiModal: document.getElementById("ai-modal"),
     quickAiModalBtn: document.getElementById("quick-ai-modal-btn"),
-    aiModalCloseBtn: document.getElementById("ai-modal-close-btn")
+    aiModalCloseBtn: document.getElementById("ai-modal-close-btn"),
+    
+    // Calendar Elements
+    calendarMonthYear: document.getElementById("calendar-month-year"),
+    calendarMonthTotal: document.getElementById("calendar-month-total"),
+    calendarPrevBtn: document.getElementById("calendar-prev-btn"),
+    calendarNextBtn: document.getElementById("calendar-next-btn"),
+    calendarTodayBtn: document.getElementById("calendar-today-btn"),
+    calendarDaysGrid: document.getElementById("calendar-days-grid"),
+    calStatAvg: document.getElementById("cal-stat-avg"),
+    calStatPeak: document.getElementById("cal-stat-peak"),
+    calStatDays: document.getElementById("cal-stat-days"),
+    calendarDayModal: document.getElementById("calendar-day-modal"),
+    calModalCloseBtn: document.getElementById("cal-modal-close-btn"),
+    calModalDateTitle: document.getElementById("cal-modal-date-title"),
+    calModalTotal: document.getElementById("cal-modal-total"),
+    calModalTbody: document.getElementById("cal-modal-tbody")
 };
 
 // Register custom Chart.js tooltip positioner to follow mouse cursor
@@ -119,6 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // initPagination(); // Removed for simplicity
     initAIParser();
     initChartToggle();
+    initCalendar();
     createIconsSafe();
     
     // Auto-login check
@@ -219,6 +239,7 @@ async function loadDashboardData() {
     await fetchTransactions(); // Wait for all data before deriving views
     renderCurrentDayFromState(); // Filter today's transactions from state
     renderTopExpensesFromState(); // Sort top expenses from state
+    renderExpenseCalendar(); // Render Calendar View with expenses
 }
 
 // Logout
@@ -756,14 +777,75 @@ async function fetchTransactions() {
         state.totalTransactions = data.total;
         
         if (state.currentTab === "transactions") {
-            state.transactions = data.transactions;
-            renderAllTransactionsTable();
+            applyFiltersAndRender();
         } else {
             // For overview mini list, take latest 10 items
             renderRecentTransactionsMiniTable(data.transactions.slice(0, 10));
         }
     } catch (err) {
         showToast("Failed to fetch transactions list", "error");
+    }
+}
+
+function applyFiltersAndRender() {
+    let filtered = [...state.allTransactions];
+    
+    // Filter search
+    if (state.filters.search) {
+        const q = state.filters.search.toLowerCase().trim();
+        filtered = filtered.filter(t => 
+            (t.item && t.item.toLowerCase().includes(q)) ||
+            (t.category && t.category.toLowerCase().includes(q))
+        );
+    }
+    
+    // Filter user
+    if (state.filters.userId) {
+        filtered = filtered.filter(t => t.userId && t.userId.toString() === state.filters.userId.toString());
+    }
+    
+    // Filter date (YYYY-MM-DD)
+    if (state.filters.date) {
+        filtered = filtered.filter(t => {
+            if (!t.createdAt) return false;
+            const d = new Date(t.createdAt);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            const dateStr = `${year}-${month}-${day}`;
+            return dateStr === state.filters.date;
+        });
+    }
+    
+    // Sort
+    if (state.filters.sortBy) {
+        const field = state.filters.sortBy;
+        const dir = state.filters.sortOrder;
+        filtered.sort((a, b) => {
+            let valA = a[field];
+            let valB = b[field];
+            if (field === "createdAt") {
+                valA = new Date(valA || 0).getTime();
+                valB = new Date(valB || 0).getTime();
+            } else if (typeof valA === "number") {
+                valA = valA || 0;
+                valB = valB || 0;
+            } else if (typeof valA === "string") {
+                valA = (valA || "").toLowerCase();
+                valB = (valB || "").toLowerCase();
+            }
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+    }
+    
+    const limit = state.filters.limit || 10;
+    state.transactions = filtered.slice(0, limit);
+    renderAllTransactionsTable();
+    
+    if (el.paginationInfo) {
+        el.paginationInfo.textContent = `Showing ${state.transactions.length} of ${filtered.length} transactions`;
     }
 }
 
@@ -877,28 +959,43 @@ async function deleteTransaction(id) {
 function initFilters() {
     // Search filter with debounce
     let searchDebounce;
-    el.txSearch.addEventListener("input", () => {
-        clearTimeout(searchDebounce);
-        searchDebounce = setTimeout(() => {
-            state.filters.search = el.txSearch.value;
-            state.filters.skip = 0;
-            fetchTransactions();
-        }, 400);
-    });
+    if (el.txSearch) {
+        el.txSearch.addEventListener("input", () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                state.filters.search = el.txSearch.value;
+                state.filters.skip = 0;
+                applyFiltersAndRender();
+            }, 400);
+        });
+    }
     
     // User filter dropdown selection
-    el.txFilterUser.addEventListener("change", () => {
-        state.filters.userId = el.txFilterUser.value;
-        state.filters.skip = 0;
-        fetchTransactions();
-    });
+    if (el.txFilterUser) {
+        el.txFilterUser.addEventListener("change", () => {
+            state.filters.userId = el.txFilterUser.value;
+            state.filters.skip = 0;
+            applyFiltersAndRender();
+        });
+    }
+
+    // Date filter selection
+    if (el.txFilterDate) {
+        el.txFilterDate.addEventListener("change", () => {
+            state.filters.date = el.txFilterDate.value;
+            state.filters.skip = 0;
+            applyFiltersAndRender();
+        });
+    }
 
     // Limit select change
-    el.txLimitSelect.addEventListener("change", () => {
-        state.filters.limit = parseInt(el.txLimitSelect.value) || 10;
-        state.filters.skip = 0;
-        fetchTransactions();
-    });
+    if (el.txLimitSelect) {
+        el.txLimitSelect.addEventListener("change", () => {
+            state.filters.limit = parseInt(el.txLimitSelect.value) || 10;
+            state.filters.skip = 0;
+            applyFiltersAndRender();
+        });
+    }
     
     // Sorting headers click
     el.sortHeaders.forEach(header => {
@@ -928,8 +1025,7 @@ function initFilters() {
             }
             
             lucide.createIcons();
-            state.filters.skip = 0;
-            fetchTransactions();
+            applyFiltersAndRender();
         });
     });
 }
@@ -977,15 +1073,25 @@ function initModal() {
     el.form.addEventListener("submit", handleFormSubmit);
 }
 
+function toDatetimeLocalValue(dateInput) {
+    if (!dateInput) return "";
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 function openAddModal() {
     el.modalTitle.textContent = "Add Transaction";
     el.formId.value = "";
     el.form.reset();
     
     // Set default date-time to now in local user's timezone
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    el.formDate.value = now.toISOString().slice(0, 16);
+    el.formDate.value = toDatetimeLocalValue(new Date());
     
     // Prefill user data automatically
     el.formUserId.value = "1828479746";
@@ -1005,9 +1111,7 @@ function openEditModal(tx) {
     el.formUserId.value = tx.userId || "";
     el.formUsername.value = tx.username || "";
     
-    const date = tx.createdAt ? new Date(tx.createdAt) : new Date();
-    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    el.formDate.value = date.toISOString().slice(0, 16);
+    el.formDate.value = toDatetimeLocalValue(tx.createdAt);
     
     el.modal.classList.add("active");
 }
@@ -1368,7 +1472,15 @@ function renderCurrentDayTable(transactions) {
     
     transactions.forEach(t => {
         const d = new Date(t.createdAt);
-        const timeStr = `${String(d.getHours()).padStart(2,'0')}.${String(d.getMinutes()).padStart(2,'0')}`;
+        const parts = new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).formatToParts(d);
+        const p = {};
+        parts.forEach(({ type, value }) => { p[type] = value; });
+        const timeStr = `${p.hour}:${p.minute} WIB`;
         const relativeStr = getRelativeTimeString(t.createdAt);
         
         const tr = document.createElement("tr");
@@ -1400,18 +1512,246 @@ function getRelativeTimeString(date) {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 }
 
+const ID_DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const ID_MONTHS_FULL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+function formatJakartaIndonesianDate(dateInput, includeTime = true) {
+    if (!dateInput) return "-";
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return "-";
+
+    const formatter = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+
+    const parts = formatter.formatToParts(d);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+
+    const weekday = p.weekday ? p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1) : "";
+    const dateStr = `${weekday}, ${p.day} ${p.month} ${p.year}`;
+    if (!includeTime) return dateStr;
+    const timeStr = `${p.hour}:${p.minute}`;
+    return `${dateStr} ${timeStr} WIB`;
+}
+
 function formatTableDate(date) {
     if (!date) return "-";
     const d = new Date(date);
     if (isNaN(d.getTime())) return "-";
-    const day = d.getDate();
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = monthNames[d.getMonth()];
-    const year = d.getFullYear();
-    const dateStr = `${day} ${month} ${year}`;
+    
+    const dateStr = formatJakartaIndonesianDate(d, false);
+    const parts = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    }).formatToParts(d);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    const timeStr = `${p.hour}:${p.minute} WIB`;
+
     const relativeStr = getRelativeTimeString(date);
     return `
-        <div>${dateStr}</div>
+        <div>${dateStr} <span style="color: var(--text-secondary); font-size: 11px; font-weight: 600; margin-left: 4px;">${timeStr}</span></div>
         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${relativeStr}</div>
     `;
+}
+
+// ======================================================
+// EXPENSE CALENDAR VIEW SYSTEM
+// ======================================================
+function initCalendar() {
+    if (el.calendarPrevBtn) {
+        el.calendarPrevBtn.addEventListener("click", () => {
+            state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+            renderExpenseCalendar();
+        });
+    }
+    if (el.calendarNextBtn) {
+        el.calendarNextBtn.addEventListener("click", () => {
+            state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+            renderExpenseCalendar();
+        });
+    }
+    if (el.calendarTodayBtn) {
+        el.calendarTodayBtn.addEventListener("click", () => {
+            state.calendarDate = new Date();
+            renderExpenseCalendar();
+        });
+    }
+    if (el.calModalCloseBtn) {
+        el.calModalCloseBtn.addEventListener("click", () => {
+            if (el.calendarDayModal) el.calendarDayModal.classList.remove("active");
+        });
+    }
+    if (el.calendarDayModal) {
+        el.calendarDayModal.addEventListener("click", (e) => {
+            if (e.target === el.calendarDayModal) {
+                el.calendarDayModal.classList.remove("active");
+            }
+        });
+    }
+}
+
+function renderExpenseCalendar() {
+    if (!el.calendarDaysGrid) return;
+    
+    const currentYear = state.calendarDate.getFullYear();
+    const currentMonth = state.calendarDate.getMonth(); // 0-indexed
+    
+    const monthNames = ID_MONTHS_FULL;
+    if (el.calendarMonthYear) {
+        el.calendarMonthYear.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    }
+    
+    // Calculate grid boundaries
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
+    const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+    
+    // Map transactions for this year & month
+    const txs = state.allTransactions || [];
+    const dayExpenseMap = {};
+    let monthlyExpenseSum = 0;
+    let peakExpense = 0;
+    let peakDay = null;
+    let activeDaysCount = 0;
+    
+    txs.forEach(t => {
+        if (!t.createdAt || t.type !== "expense") return;
+        const d = new Date(t.createdAt);
+        // Compare using Jakarta timezone
+        const jStr = toJakartaDateStrClient(d);
+        const [jY, jM, jD] = jStr.split("-").map(Number);
+        if (jY === currentYear && (jM - 1) === currentMonth) {
+            const dayNum = jD;
+            if (!dayExpenseMap[dayNum]) {
+                dayExpenseMap[dayNum] = { total: 0, items: [] };
+            }
+            dayExpenseMap[dayNum].total += t.amount || 0;
+            dayExpenseMap[dayNum].items.push(t);
+        }
+    });
+    
+    Object.keys(dayExpenseMap).forEach(dayKey => {
+        const dayTotal = dayExpenseMap[dayKey].total;
+        monthlyExpenseSum += dayTotal;
+        activeDaysCount++;
+        if (dayTotal > peakExpense) {
+            peakExpense = dayTotal;
+            peakDay = dayKey;
+        }
+    });
+    
+    // Update Header & Summary Stats
+    if (el.calendarMonthTotal) {
+        el.calendarMonthTotal.textContent = `Total: Rp${formatCurrency(monthlyExpenseSum)}`;
+    }
+    const dailyAvg = totalDaysInMonth > 0 ? Math.round(monthlyExpenseSum / totalDaysInMonth) : 0;
+    if (el.calStatAvg) el.calStatAvg.textContent = `Rp${formatCurrency(dailyAvg)}`;
+    if (el.calStatPeak) el.calStatPeak.textContent = peakDay ? `${peakDay} ${monthNames[currentMonth]} (Rp${formatCurrency(peakExpense)})` : "-";
+    if (el.calStatDays) el.calStatDays.textContent = `${activeDaysCount} dari ${totalDaysInMonth} hari`;
+    
+    // Build Days Grid
+    el.calendarDaysGrid.innerHTML = "";
+    
+    const todayStr = getTodayDateStr();
+    const [tY, tM, tD] = todayStr.split("-").map(Number);
+    const isCurrentActualMonth = tY === currentYear && (tM - 1) === currentMonth;
+    const todayDateNum = tD;
+    
+    // 1. Previous Month Padding Cells
+    for (let i = firstDayIndex; i > 0; i--) {
+        const prevDayNum = prevMonthLastDay - i + 1;
+        const cell = document.createElement("div");
+        cell.className = "calendar-day-cell other-month";
+        cell.innerHTML = `<span class="calendar-day-number">${prevDayNum}</span>`;
+        el.calendarDaysGrid.appendChild(cell);
+    }
+    
+    // 2. Current Month Day Cells
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+        const cell = document.createElement("div");
+        const isToday = isCurrentActualMonth && day === todayDateNum;
+        cell.className = `calendar-day-cell${isToday ? " is-today" : ""}`;
+        
+        const dayData = dayExpenseMap[day];
+        let expenseHtml = "";
+        
+        if (dayData && dayData.total > 0) {
+            const isHigh = peakExpense > 0 && dayData.total >= (peakExpense * 0.7);
+            const expClass = isHigh ? "calendar-day-expense high-expense" : "calendar-day-expense has-expense";
+            const displayAmt = dayData.total >= 1000000 
+                ? `${(dayData.total / 1000000).toFixed(1)}M` 
+                : (dayData.total >= 1000 ? `${Math.round(dayData.total / 1000)}k` : `${dayData.total}`);
+            
+            expenseHtml = `
+                <div>
+                    <span class="${expClass}">Rp${displayAmt}</span>
+                    <div class="calendar-day-tx-count">${dayData.items.length} item${dayData.items.length > 1 ? 's' : ''}</div>
+                </div>
+            `;
+        }
+        
+        cell.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="calendar-day-number">${day}</span>
+                ${isToday ? '<span style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #ff4a9e; font-weight: 800;">Hari Ini</span>' : ''}
+            </div>
+            ${expenseHtml}
+        `;
+        
+        if (dayData && dayData.items.length > 0) {
+            cell.addEventListener("click", () => openCalendarDayModal(currentYear, currentMonth, day, dayData));
+        }
+        
+        el.calendarDaysGrid.appendChild(cell);
+    }
+    
+    // 3. Next Month Padding Cells
+    const totalCellsSoFar = firstDayIndex + totalDaysInMonth;
+    const remainingCells = (7 - (totalCellsSoFar % 7)) % 7;
+    for (let i = 1; i <= remainingCells; i++) {
+        const cell = document.createElement("div");
+        cell.className = "calendar-day-cell other-month";
+        cell.innerHTML = `<span class="calendar-day-number">${i}</span>`;
+        el.calendarDaysGrid.appendChild(cell);
+    }
+    
+    createIconsSafe();
+}
+
+function openCalendarDayModal(year, month, day, dayData) {
+    const jsMonth = String(month + 1).padStart(2, "0");
+    const jsDay = String(day).padStart(2, "0");
+    const dObj = new Date(`${year}-${jsMonth}-${jsDay}T12:00:00+07:00`);
+    const dateStr = formatJakartaIndonesianDate(dObj, false);
+    
+    if (el.calModalDateTitle) el.calModalDateTitle.textContent = dateStr;
+    if (el.calModalTotal) el.calModalTotal.textContent = `Total Pengeluaran: Rp${formatCurrency(dayData.total)}`;
+    
+    if (el.calModalTbody) {
+        el.calModalTbody.innerHTML = "";
+        dayData.items.forEach(item => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(item.item)}</strong></td>
+                <td><span class="tx-badge ${item.type}">${escapeHtml(item.category || "manual")}</span></td>
+                <td><span class="tx-amount ${item.type}">Rp${formatCurrency(item.amount)}</span></td>
+            `;
+            el.calModalTbody.appendChild(tr);
+        });
+    }
+    
+    if (el.calendarDayModal) {
+        el.calendarDayModal.classList.add("active");
+    }
 }
