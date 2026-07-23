@@ -2047,3 +2047,36 @@ table:has(#current-day-tbody) th {
         padding: 1px 3px;
     }
 }
+
+/* Same-Day Transaction Group Color Themes */
+tr.day-group-purple {
+    background: rgba(139, 92, 246, 0.08) !important;
+    border-left: 3px solid #8b5cf6 !important;
+}
+tr.day-group-purple:hover {
+    background: rgba(139, 92, 246, 0.18) !important;
+}
+
+tr.day-group-pink {
+    background: rgba(255, 74, 158, 0.08) !important;
+    border-left: 3px solid #ff4a9e !important;
+}
+tr.day-group-pink:hover {
+    background: rgba(255, 74, 158, 0.18) !important;
+}
+
+tr.day-group-cyan {
+    background: rgba(6, 182, 212, 0.08) !important;
+    border-left: 3px solid #06b6d4 !important;
+}
+tr.day-group-cyan:hover {
+    background: rgba(6, 182, 212, 0.18) !important;
+}
+
+tr.day-group-amber {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-left: 3px solid #f59e0b !important;
+}
+tr.day-group-amber:hover {
+    background: rgba(245, 158, 11, 0.18) !important;
+}

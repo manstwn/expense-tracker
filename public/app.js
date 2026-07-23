@@ -780,8 +780,8 @@ async function fetchTransactions() {
         if (state.currentTab === "transactions") {
             applyFiltersAndRender();
         } else {
-            // For overview mini list, take latest 10 items
-            renderRecentTransactionsMiniTable(data.transactions.slice(0, 10));
+            // For overview mini list, take latest 20 items
+            renderRecentTransactionsMiniTable(data.transactions.slice(0, 20));
         }
     } catch (err) {
         showToast("Failed to fetch transactions list", "error");
@@ -850,6 +850,8 @@ function applyFiltersAndRender() {
     }
 }
 
+const DAY_COLOR_CLASSES = ["day-group-purple", "day-group-pink", "day-group-cyan", "day-group-amber"];
+
 function renderRecentTransactionsMiniTable(transactions) {
     el.recentTbody.innerHTML = "";
     if (transactions.length === 0) {
@@ -858,18 +860,17 @@ function renderRecentTransactionsMiniTable(transactions) {
     }
     
     let currentDayStr = null;
-    let dayGroupClass = "day-group-1";
+    let colorIndex = 0;
     
     transactions.forEach(t => {
         const formattedDate = formatTableDate(t.createdAt);
-        
-        // Extract only the day part for grouping
-        const dayRef = t.createdAt ? new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }) : "no-date";
+        const dayRef = t.createdAt ? toJakartaDateStrClient(new Date(t.createdAt)) : "no-date";
         
         if (currentDayStr !== dayRef) {
             currentDayStr = dayRef;
-            dayGroupClass = dayGroupClass === "day-group-1" ? "day-group-2" : "day-group-1";
+            colorIndex = (colorIndex + 1) % DAY_COLOR_CLASSES.length;
         }
+        const dayGroupClass = DAY_COLOR_CLASSES[colorIndex];
         
         const tr = document.createElement("tr");
         tr.className = dayGroupClass;
@@ -1358,7 +1359,7 @@ function renderTopExpensesFromState() {
     const topExpenses = (state.allTransactions || [])
         .filter(t => t.type === "expense")
         .sort((a, b) => b.amount - a.amount)
-        .slice(0, 10);
+        .slice(0, 20);
     renderTopExpensiveTable(topExpenses);
 }
 
@@ -1370,18 +1371,17 @@ function renderTopExpensiveTable(transactions) {
     }
     
     let currentDayStr = null;
-    let dayGroupClass = "day-group-1";
+    let colorIndex = 0;
     
     transactions.forEach(t => {
         const formattedDate = formatTableDate(t.createdAt);
-        
-        // Extract only the day part for grouping
-        const dayRef = t.createdAt ? new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }) : "no-date";
+        const dayRef = t.createdAt ? toJakartaDateStrClient(new Date(t.createdAt)) : "no-date";
         
         if (currentDayStr !== dayRef) {
             currentDayStr = dayRef;
-            dayGroupClass = dayGroupClass === "day-group-1" ? "day-group-2" : "day-group-1";
+            colorIndex = (colorIndex + 1) % DAY_COLOR_CLASSES.length;
         }
+        const dayGroupClass = DAY_COLOR_CLASSES[colorIndex];
         
         const tr = document.createElement("tr");
         tr.className = dayGroupClass;
