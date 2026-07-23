@@ -1995,19 +1995,20 @@ table:has(#current-day-tbody) th {
     align-items: center;
     gap: 4px;
     font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    transition: background 0.15s ease;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.15s ease;
 }
 
 .cal-item-row:hover {
-    background: rgba(139, 92, 246, 0.18);
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.4);
 }
 
 .cal-item-name {
-    color: var(--text-main, #e2e8f0);
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
