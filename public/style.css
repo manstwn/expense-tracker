@@ -1956,19 +1956,19 @@ table:has(#current-day-tbody) th {
 .calendar-day-total-badge {
     font-size: 10px;
     font-weight: 700;
-    color: #ff4a9e;
-    background: rgba(255, 74, 158, 0.15);
-    border: 1px solid rgba(255, 74, 158, 0.3);
+    color: #fda4af;
+    background: rgba(244, 63, 94, 0.18);
+    border: 1px solid rgba(244, 63, 94, 0.35);
     border-radius: 4px;
-    padding: 1px 5px;
+    padding: 2px 6px;
     white-space: nowrap;
 }
 
 .calendar-day-total-badge.high-expense {
     color: #ffffff;
-    background: linear-gradient(135deg, #ff4a9e, #ef4444);
+    background: linear-gradient(135deg, #f43f5e, #e11d48);
     border: none;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 2px 8px rgba(244, 63, 94, 0.5);
 }
 
 /* Scrollable expense items inside day cell */
@@ -1995,29 +1995,34 @@ table:has(#current-day-tbody) th {
     align-items: center;
     gap: 4px;
     font-size: 11px;
-    padding: 3px 6px;
+    padding: 2px 5px;
     border-radius: 5px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.15s ease;
 }
 
 .cal-item-row:hover {
-    background: rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.22);
     border-color: rgba(139, 92, 246, 0.4);
 }
 
 .cal-item-name {
-    color: #ffffff;
+    color: #f1f5f9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-weight: 500;
-    max-width: 72%;
+    font-weight: 600;
+    font-size: 11px;
+    max-width: 68%;
 }
 
 .cal-item-amt {
-    color: #ff4a9e;
+    color: #fb7185;
+    background: rgba(251, 113, 133, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.28);
+    border-radius: 4px;
+    padding: 1px 4px;
     font-weight: 700;
     font-size: 10px;
     white-space: nowrap;
