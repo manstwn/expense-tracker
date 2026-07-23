@@ -1524,6 +1524,17 @@ function renderCurrentDayTable(transactions) {
     });
 }
 
+function formatShortCurrency(amount) {
+    if (!amount) return "0";
+    if (amount >= 1000000) {
+        return (amount / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    }
+    if (amount >= 1000) {
+        return Math.round(amount / 1000) + "k";
+    }
+    return String(amount);
+}
+
 function getRelativeTimeString(date) {
     const now = new Date();
     const diffMs = now - new Date(date);
@@ -1715,29 +1726,38 @@ function renderExpenseCalendar() {
         cell.className = `calendar-day-cell${isToday ? " is-today" : ""}`;
         
         const dayData = dayExpenseMap[day];
-        let expenseHtml = "";
+        
+        let headerRight = "";
+        let itemsListHtml = "";
+        
+        if (isToday) {
+            headerRight = '<span style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #ff4a9e; font-weight: 800;">Hari Ini</span>';
+        }
         
         if (dayData && dayData.total > 0) {
             const isHigh = peakExpense > 0 && dayData.total >= (peakExpense * 0.7);
-            const expClass = isHigh ? "calendar-day-expense high-expense" : "calendar-day-expense has-expense";
-            const displayAmt = dayData.total >= 1000000 
-                ? `${(dayData.total / 1000000).toFixed(1)}M` 
-                : (dayData.total >= 1000 ? `${Math.round(dayData.total / 1000)}k` : `${dayData.total}`);
+            const badgeClass = isHigh ? "calendar-day-total-badge high-expense" : "calendar-day-total-badge";
+            headerRight = `<span class="${badgeClass}">Rp${formatShortCurrency(dayData.total)}</span>`;
             
-            expenseHtml = `
-                <div>
-                    <span class="${expClass}">Rp${displayAmt}</span>
-                    <div class="calendar-day-tx-count">${dayData.items.length} item${dayData.items.length > 1 ? 's' : ''}</div>
-                </div>
-            `;
+            let itemRows = "";
+            dayData.items.forEach(item => {
+                itemRows += `
+                    <div class="cal-item-row">
+                        <span class="cal-item-name" title="${escapeHtml(item.item)}">${escapeHtml(item.item)}</span>
+                        <span class="cal-item-amt">Rp${formatShortCurrency(item.amount)}</span>
+                    </div>
+                `;
+            });
+            
+            itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
         }
         
         cell.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="calendar-day-header">
                 <span class="calendar-day-number">${day}</span>
-                ${isToday ? '<span style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #ff4a9e; font-weight: 800;">Hari Ini</span>' : ''}
+                ${headerRight}
             </div>
-            ${expenseHtml}
+            ${itemsListHtml}
         `;
         
         if (dayData && dayData.items.length > 0) {

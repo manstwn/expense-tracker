@@ -1892,18 +1892,18 @@ table:has(#current-day-tbody) th {
 .calendar-days-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
+    gap: 8px;
 }
 
 .calendar-day-cell {
-    min-height: 75px;
+    height: 145px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 8px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
@@ -1918,7 +1918,7 @@ table:has(#current-day-tbody) th {
 }
 
 .calendar-day-cell.other-month {
-    opacity: 0.25;
+    opacity: 0.2;
     cursor: default;
     background: rgba(0, 0, 0, 0.1);
 }
@@ -1934,6 +1934,15 @@ table:has(#current-day-tbody) th {
     background: rgba(139, 92, 246, 0.12);
 }
 
+.calendar-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .calendar-day-number {
     font-size: 13px;
     font-weight: 700;
@@ -1944,47 +1953,91 @@ table:has(#current-day-tbody) th {
     color: #ff4a9e;
 }
 
-.calendar-day-expense {
-    font-size: 11px;
+.calendar-day-total-badge {
+    font-size: 10px;
     font-weight: 700;
-    border-radius: 6px;
-    padding: 3px 6px;
-    align-self: flex-start;
-    white-space: nowrap;
-    margin-top: 4px;
-}
-
-.calendar-day-expense.has-expense {
     color: #ff4a9e;
     background: rgba(255, 74, 158, 0.15);
     border: 1px solid rgba(255, 74, 158, 0.3);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
 }
 
-.calendar-day-expense.high-expense {
+.calendar-day-total-badge.high-expense {
     color: #ffffff;
     background: linear-gradient(135deg, #ff4a9e, #ef4444);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    border: none;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
 }
 
-.calendar-day-tx-count {
+/* Scrollable expense items inside day cell */
+.calendar-day-items-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-right: 2px;
+}
+
+.calendar-day-items-list::-webkit-scrollbar {
+    width: 3px;
+}
+.calendar-day-items-list::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+}
+
+.cal-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.15s ease;
+}
+
+.cal-item-row:hover {
+    background: rgba(139, 92, 246, 0.18);
+}
+
+.cal-item-name {
+    color: var(--text-main, #e2e8f0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    max-width: 72%;
+}
+
+.cal-item-amt {
+    color: #ff4a9e;
+    font-weight: 700;
     font-size: 10px;
-    color: var(--text-secondary);
-    margin-top: 2px;
+    white-space: nowrap;
 }
 
 @media (max-width: 640px) {
     .calendar-container {
-        padding: 16px;
+        padding: 14px;
+    }
+    .calendar-days-grid {
+        gap: 4px;
     }
     .calendar-day-cell {
-        min-height: 60px;
+        height: 120px;
         padding: 5px;
     }
     .calendar-day-number {
         font-size: 11px;
     }
-    .calendar-day-expense {
-        font-size: 9px;
-        padding: 2px 4px;
+    .cal-item-row {
+        font-size: 10px;
+        padding: 1px 3px;
     }
 }
