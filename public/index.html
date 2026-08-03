@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+    <meta name="theme-color" content="#0a051b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Money Tracker Dashboard</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="style.css?v=1.7.0">
+    <link rel="stylesheet" href="style.css?v=1.8.0">
 </head>
 <body>
     <div class="bg-blur-circles">
@@ -102,12 +106,12 @@
                     <h1 id="welcome-message">Financial Overview</h1>
                     <p>Track, manage, and analyze your transactions</p>
                 </div>
-                <div class="header-actions" style="display: flex; gap: 10px;">
+                <div class="header-actions">
                     <button id="quick-ai-modal-btn" class="btn btn-secondary">
-                        <i data-lucide="sparkles"></i> Quick AI Parse
+                        <i data-lucide="sparkles"></i> <span class="btn-label">Quick AI Parse</span>
                     </button>
                     <button id="quick-add-btn" class="btn btn-primary">
-                        <i data-lucide="plus"></i> Add Transaction
+                        <i data-lucide="plus"></i> <span class="btn-label">Add Transaction</span>
                     </button>
                 </div>
             </header>
@@ -242,13 +246,13 @@
                     <!-- Calendar Grid -->
                     <div class="calendar-grid-wrapper">
                         <div class="calendar-weekdays">
-                            <div>Minggu</div>
-                            <div>Senin</div>
-                            <div>Selasa</div>
-                            <div>Rabu</div>
-                            <div>Kamis</div>
-                            <div>Jumat</div>
-                            <div>Sabtu</div>
+                            <div><span class="wd-full">Minggu</span><span class="wd-short">Min</span></div>
+                            <div><span class="wd-full">Senin</span><span class="wd-short">Sen</span></div>
+                            <div><span class="wd-full">Selasa</span><span class="wd-short">Sel</span></div>
+                            <div><span class="wd-full">Rabu</span><span class="wd-short">Rab</span></div>
+                            <div><span class="wd-full">Kamis</span><span class="wd-short">Kam</span></div>
+                            <div><span class="wd-full">Jumat</span><span class="wd-short">Jum</span></div>
+                            <div><span class="wd-full">Sabtu</span><span class="wd-short">Sab</span></div>
                         </div>
                         <div id="calendar-days-grid" class="calendar-days-grid">
                             <!-- Dynamic calendar day cells -->
@@ -648,6 +652,6 @@
     </div>
 
     <!-- App Script -->
-    <script src="app.js?v=1.7.0"></script>
+    <script src="app.js?v=1.8.0"></script>
 </body>
 </html>

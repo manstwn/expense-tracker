@@ -449,6 +449,12 @@ body {
     padding: 0;
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
 /* Tab Panes */
 .tab-pane {
     display: none;
@@ -2079,4 +2085,278 @@ tr.day-group-amber {
 }
 tr.day-group-amber:hover {
     background: rgba(245, 158, 11, 0.18) !important;
+}
+
+/* ======================================================
+   UX / UI ENHANCEMENT LAYER  (v1.8.0)
+   Professional polish + mobile-first responsiveness.
+   Appended last so it wins on equal specificity.
+   ====================================================== */
+
+/* ---- 1. Global touch, motion & accessibility ---- */
+html {
+    -webkit-text-size-adjust: 100%;   /* stop iOS auto-zooming text */
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+}
+
+/* Kill the grey tap flash on mobile; we provide our own feedback */
+button, a, .nav-item, .bottom-nav-item, .key-btn, .calendar-day-cell,
+.kpi-card, .action-btn, .data-table tbody tr {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Keyboard users get a clear, on-brand focus ring (mouse/touch don't) */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.nav-item:focus-visible,
+.bottom-nav-item:focus-visible,
+.key-btn:focus-visible,
+.calendar-day-cell:focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+    border-radius: 10px;
+}
+
+/* Weekday label full/short toggle (short hidden on desktop) */
+.wd-short { display: none; }
+
+/* Respect users who ask for less motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ---- 2. Tactile press feedback (works great on touch) ---- */
+.btn:active { transform: scale(0.96); }
+.nav-item:active,
+.bottom-nav-item:active,
+.action-btn:active,
+.btn-icon-sm:active,
+.btn-secondary-sm:active { transform: scale(0.94); }
+.kpi-card:active,
+.calendar-day-cell:not(.other-month):active { transform: scale(0.985); }
+
+/* Give KPI cards a subtle accent strip so numbers read as "cards" */
+.kpi-card {
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--accent-purple), var(--accent-pink));
+    opacity: 0.75;
+}
+
+/* Smooth momentum scrolling inside every scroll region on iOS */
+.table-wrapper,
+.main-content,
+.modal-content,
+.calendar-day-items-list {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ======================================================
+   3. TABLET & PHONE  (<= 768px)
+   ====================================================== */
+@media (max-width: 768px) {
+
+    /* Leave room for the fixed bottom nav incl. iOS home indicator */
+    #dashboard-screen {
+        padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Header actions become compact icon buttons — no text overflow */
+    .header-actions { gap: 8px; }
+
+    #quick-ai-modal-btn,
+    #quick-add-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+    #quick-ai-modal-btn .btn-label,
+    #quick-add-btn .btn-label { display: none; }
+    #quick-ai-modal-btn svg,
+    #quick-add-btn svg { width: 20px; height: 20px; }
+
+    /* KPI values: bigger & easier to read than the old 12px */
+    .kpi-content h3 { font-size: 15px; }
+    .kpi-content span { font-size: 9.5px; }
+    .kpi-card { padding: 10px 10px 10px 12px; }
+
+    /* Charts deserve more vertical room to actually be legible */
+    .chart-wrapper { height: 200px; }
+    .donut-wrapper { height: 180px; max-width: 180px; }
+
+    /* Bottom nav: taller touch targets + safe-area padding */
+    .bottom-nav {
+        height: 60px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bottom-nav-item {
+        width: 20%;
+        gap: 3px;
+        font-size: 10px;
+        border-radius: 12px;
+    }
+    .bottom-nav-item i { width: 20px; height: 20px; }
+    .bottom-nav-item.active {
+        background: rgba(139, 92, 246, 0.12);
+    }
+
+    /* Bottom-sheet modals get a drag handle + comfy inputs */
+    .modal-content {
+        padding-top: 22px;
+    }
+    .modal-content::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.25);
+    }
+    /* 16px font stops iOS from zooming the viewport on focus */
+    .form-group input,
+    .form-group select,
+    .search-box input,
+    #ai-input-text {
+        font-size: 16px;
+    }
+    .form-actions .btn { flex: 1; padding: 12px; }
+
+    /* Sortable header chevrons are noise on mobile card view */
+    .data-table th.sortable i { display: none; }
+}
+
+/* ======================================================
+   4. MOBILE CALENDAR  — compact, tappable heatmap
+   The dense in-cell item list is unusable at phone widths,
+   so we collapse each day to number + total pill and let
+   the existing tap-to-open-modal show the detail.
+   ====================================================== */
+@media (max-width: 768px) {
+    .wd-full { display: none; }
+    .wd-short { display: inline; }
+
+    .calendar-header { gap: 10px; }
+    .calendar-title-group h3 { font-size: 15px; }
+    .calendar-title-group { gap: 8px; }
+
+    /* Stat cards flow in a single tidy row that can scroll if needed */
+    .calendar-stats-bar {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+    .cal-stat-item { padding: 8px 8px; }
+    .cal-stat-label { font-size: 8.5px; letter-spacing: 0.3px; }
+    .cal-stat-val { font-size: 12px; }
+
+    .calendar-weekdays {
+        gap: 3px;
+        font-size: 10px;
+    }
+    .calendar-days-grid { gap: 3px; }
+
+    /* The key change: short square cells, no inner item list */
+    .calendar-day-cell {
+        height: auto;
+        aspect-ratio: 1 / 1;
+        padding: 4px;
+        border-radius: 8px;
+        justify-content: space-between;
+    }
+    .calendar-day-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+        width: 100%;
+    }
+    .calendar-day-number { font-size: 12px; }
+
+    /* Hide the per-item list; keep just a compact total pill */
+    .calendar-day-items-list { display: none; }
+
+    .calendar-day-total-badge {
+        font-size: 8.5px;
+        padding: 1px 4px;
+        align-self: stretch;
+        text-align: center;
+        border-radius: 5px;
+    }
+    /* "Hari Ini" text label would overflow — dot marker instead */
+    .calendar-day-cell.is-today .calendar-day-header > span:not(.calendar-day-total-badge):not(.calendar-day-number) {
+        display: none;
+    }
+}
+
+/* ======================================================
+   5. PHONE  (<= 480px) — final tightening
+   ====================================================== */
+@media (max-width: 480px) {
+
+    /* Login: roomier, thumb-friendly keypad (was cramped 44px in 250px card) */
+    .login-container {
+        max-width: 320px;
+        padding: 24px 20px;
+        border-radius: 20px;
+    }
+    .logo-wrapper {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        margin-bottom: 14px;
+    }
+    .logo-icon { width: 28px; height: 28px; }
+    .login-header h1 { font-size: 22px; }
+    .login-header p { font-size: 12px; margin-bottom: 20px; }
+    .pin-display { gap: 14px; margin-bottom: 22px; }
+    .pin-dot { width: 13px; height: 13px; }
+    .keypad {
+        gap: 12px;
+        max-width: 260px;
+    }
+    .key-btn {
+        width: auto;
+        height: auto;
+        aspect-ratio: 1;
+        font-size: 20px;
+    }
+
+    /* Two clear metric columns */
+    .kpi-grid { gap: 8px; }
+    .kpi-content h3 { font-size: 16px; }
+
+    /* Full-width action row inside the AI parse sheet */
+    .ai-input-group textarea { min-height: 90px; font-size: 16px; }
+
+    /* Give the trend chart a touch more height on tall phones */
+    .chart-wrapper { height: 210px; }
+}
+
+/* Very small / older phones (<=360px): keep 4-up metrics from breaking */
+@media (max-width: 360px) {
+    .kpi-content h3 { font-size: 14px; }
+    .calendar-stats-bar { grid-template-columns: 1fr 1fr; }
+    .calendar-stats-bar .cal-stat-item:last-child { grid-column: span 2; }
 }
