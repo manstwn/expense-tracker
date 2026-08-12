@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="style.css?v=1.8.3">
+    <link rel="stylesheet" href="style.css?v=1.9.0">
 </head>
 <body>
     <div class="bg-blur-circles">
@@ -87,6 +87,10 @@
                 <button class="nav-item" data-tab="insights">
                     <i data-lucide="trending-up"></i>
                     <span>Insights</span>
+                </button>
+                <button class="nav-item" data-tab="stories">
+                    <i data-lucide="notebook-pen"></i>
+                    <span>Story</span>
                 </button>
             </nav>
 
@@ -454,6 +458,29 @@
                 </div>
 
             </section>
+
+            <!-- TAB: STORIES -->
+            <section id="tab-stories" class="tab-pane">
+                <div class="table-controls glass" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="font-size: 18px; font-weight: 700;">My Stories</h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">Capture your daily moments and diary updates</p>
+                    </div>
+                    <button id="quick-add-story-btn" class="btn btn-primary">
+                        <i data-lucide="plus"></i> New Story
+                    </button>
+                </div>
+
+                <div id="stories-grid" class="stories-grid mt-4">
+                    <!-- Dynamic story cards -->
+                </div>
+
+                <div id="stories-empty" class="stories-empty glass" style="display: none;">
+                    <i data-lucide="notebook-pen" style="width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.4;"></i>
+                    <h3>No stories yet</h3>
+                    <p>Start your first diary entry today!</p>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -477,6 +504,58 @@
                     <div class="form-actions">
                         <button type="button" id="food-form-cancel-btn" class="btn btn-secondary">Cancel</button>
                         <button type="submit" class="btn btn-primary">Log Food</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT STORY -->
+    <div id="story-modal" class="modal-overlay">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h3 id="story-modal-title"><i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>New Story</h3>
+                <button class="modal-close" id="story-modal-close-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="story-form">
+                    <input type="hidden" id="story-form-id">
+
+                    <div class="form-group">
+                        <label for="story-form-title">Title <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span></label>
+                        <input type="text" id="story-form-title" placeholder="e.g. A beautiful day at the beach">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="story-form-content">Content</label>
+                        <textarea id="story-form-content" class="story-textarea" placeholder="Write your story here..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mood</label>
+                        <div class="story-mood-picker" id="story-mood-picker">
+                            <button type="button" class="mood-btn" data-mood="">😐</button>
+                            <button type="button" class="mood-btn" data-mood="😊">😊</button>
+                            <button type="button" class="mood-btn" data-mood="😌">😌</button>
+                            <button type="button" class="mood-btn" data-mood="😢">😢</button>
+                            <button type="button" class="mood-btn" data-mood="😴">😴</button>
+                            <button type="button" class="mood-btn" data-mood="🔥">🔥</button>
+                            <button type="button" class="mood-btn" data-mood="🤯">🤯</button>
+                            <input type="hidden" id="story-form-mood" value="">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="story-form-date">Date</label>
+                        <div class="input-icon-wrap">
+                            <i data-lucide="calendar"></i>
+                            <input type="datetime-local" id="story-form-date" onclick="this.showPicker && this.showPicker()">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="story-form-cancel-btn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Story</button>
                     </div>
                 </form>
             </div>
@@ -636,6 +715,10 @@
             <i data-lucide="trending-up"></i>
             <span>Insights</span>
         </button>
+        <button class="bottom-nav-item" data-tab="stories">
+            <i data-lucide="notebook-pen"></i>
+            <span>Story</span>
+        </button>
         <button class="bottom-nav-item" id="mobile-logout-btn">
             <i data-lucide="log-out"></i>
             <span>Exit</span>
@@ -649,6 +732,6 @@
     </div>
 
     <!-- App Script -->
-    <script src="app.js?v=1.8.0"></script>
+    <script src="app.js?v=1.9.0"></script>
 </body>
 </html>

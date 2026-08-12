@@ -113,7 +113,23 @@ const el = {
     calModalCloseBtn: document.getElementById("cal-modal-close-btn"),
     calModalDateTitle: document.getElementById("cal-modal-date-title"),
     calModalTotal: document.getElementById("cal-modal-total"),
-    calModalTbody: document.getElementById("cal-modal-tbody")
+    calModalTbody: document.getElementById("cal-modal-tbody"),
+
+    // Stories
+    storiesGrid: document.getElementById("stories-grid"),
+    storiesEmpty: document.getElementById("stories-empty"),
+    quickAddStoryBtn: document.getElementById("quick-add-story-btn"),
+    storyModal: document.getElementById("story-modal"),
+    storyModalTitle: document.getElementById("story-modal-title"),
+    storyModalCloseBtn: document.getElementById("story-modal-close-btn"),
+    storyCancelBtn: document.getElementById("story-form-cancel-btn"),
+    storyForm: document.getElementById("story-form"),
+    storyFormId: document.getElementById("story-form-id"),
+    storyFormTitle: document.getElementById("story-form-title"),
+    storyFormContent: document.getElementById("story-form-content"),
+    storyFormDate: document.getElementById("story-form-date"),
+    storyFormMood: document.getElementById("story-form-mood"),
+    storyMoodPicker: document.getElementById("story-mood-picker")
 };
 
 // Register custom Chart.js tooltip positioner to follow mouse cursor
@@ -135,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initTabs();
     initModal();
     initFoodModal(); // New
+    initStoryModal(); // New
     initFilters();
     // initPagination(); // Removed for simplicity
     initAIParser();
@@ -176,6 +193,178 @@ function initFoodModal() {
             showToast("Failed to log food", "error");
         }
     });
+}
+
+// ======================================================
+// STORIES (DIARY) FEATURE
+// ======================================================
+function initStoryModal() {
+    const addStoryBtn = el.quickAddStoryBtn;
+    const storyModal = el.storyModal;
+    const storyCloseBtn = el.storyModalCloseBtn;
+    const storyCancelBtn = el.storyCancelBtn;
+    const storyForm = el.storyForm;
+
+    if (addStoryBtn) addStoryBtn.addEventListener("click", () => openStoryModal());
+    if (storyCloseBtn) storyCloseBtn.addEventListener("click", () => storyModal.classList.remove("active"));
+    if (storyCancelBtn) storyCancelBtn.addEventListener("click", () => storyModal.classList.remove("active"));
+    if (storyModal) storyModal.addEventListener("click", (e) => {
+        if (e.target === storyModal) storyModal.classList.remove("active");
+    });
+
+    // Mood picker single-select
+    if (el.storyMoodPicker) {
+        el.storyMoodPicker.addEventListener("click", (e) => {
+            const btn = e.target.closest(".mood-btn");
+            if (!btn) return;
+            el.storyMoodPicker.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            el.storyFormMood.value = btn.dataset.mood;
+        });
+    }
+
+    storyForm.addEventListener("submit", handleStoryFormSubmit);
+}
+
+async function fetchStories() {
+    try {
+        const data = await apiCall("/api/stories");
+        renderStoriesList(data.stories || []);
+    } catch (err) {
+        console.error("Failed to fetch stories:", err);
+        showToast("Failed to fetch stories", "error");
+    }
+}
+
+function renderStoriesList(stories) {
+    if (!el.storiesGrid) return;
+
+    if (el.storiesEmpty) el.storiesEmpty.style.display = stories.length === 0 ? "flex" : "none";
+
+    el.storiesGrid.innerHTML = "";
+    if (stories.length === 0) return;
+
+    stories.forEach(story => {
+        const d = new Date(story.createdAt);
+        const dateStr = formatJakartaIndonesianDate(d, false);
+        const timeStr = new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).format(d);
+        const relativeStr = getRelativeTimeString(story.createdAt);
+        const mood = story.mood || "😐";
+        const title = story.title || "Untitled Story";
+
+        const card = document.createElement("div");
+        card.className = "story-card glass";
+        card.innerHTML = `
+            <div class="story-card-header">
+                <span class="story-mood-badge" title="Mood">${mood}</span>
+                <div class="story-card-actions">
+                    <button class="action-btn edit" data-id="${story._id}"><i data-lucide="edit-3"></i></button>
+                    <button class="action-btn delete" data-id="${story._id}"><i data-lucide="trash-2"></i></button>
+                </div>
+            </div>
+            <h3 class="story-card-title">${escapeHtml(title)}</h3>
+            <p class="story-card-content">${escapeHtml(story.content)}</p>
+            <div class="story-card-footer">
+                <span><i data-lucide="calendar" style="width: 12px; height: 12px; vertical-align: -1px;"></i> ${dateStr} ${timeStr} WIB</span>
+                <span class="story-card-relative">${relativeStr}</span>
+            </div>
+        `;
+
+        card.querySelector(".edit").addEventListener("click", () => openStoryModal(story));
+        card.querySelector(".delete").addEventListener("click", () => deleteStory(story._id));
+
+        el.storiesGrid.appendChild(card);
+    });
+
+    createIconsSafe();
+}
+
+function openStoryModal(story) {
+    if (!el.storyModal) return;
+
+    // Reset form
+    el.storyForm.reset();
+    el.storyFormId.value = "";
+    el.storyFormMood.value = "";
+    el.storyMoodPicker.querySelectorAll(".mood-btn").forEach((b, i) => {
+        b.classList.toggle("active", b.dataset.mood === "");
+    });
+
+    if (story) {
+        el.storyModalTitle.innerHTML = `<i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>Edit Story`;
+        el.storyFormId.value = story._id;
+        el.storyFormTitle.value = story.title || "";
+        el.storyFormContent.value = story.content || "";
+
+        const moodVal = story.mood || "";
+        el.storyFormMood.value = moodVal;
+        el.storyMoodPicker.querySelectorAll(".mood-btn").forEach(b => {
+            b.classList.toggle("active", b.dataset.mood === moodVal);
+        });
+
+        const dateObj = story.createdAt ? new Date(story.createdAt) : new Date();
+        el.storyFormDate.value = toDatetimeLocalValue(dateObj);
+    } else {
+        el.storyModalTitle.innerHTML = `<i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>New Story`;
+        el.storyFormDate.value = toDatetimeLocalValue(new Date());
+    }
+
+    el.storyModal.classList.add("active");
+    createIconsSafe();
+}
+
+async function handleStoryFormSubmit(e) {
+    e.preventDefault();
+
+    const id = el.storyFormId.value;
+    const title = el.storyFormTitle.value.trim();
+    const content = el.storyFormContent.value.trim();
+    const mood = el.storyFormMood.value;
+    const dateVal = el.storyFormDate.value;
+
+    if (!content) {
+        showToast("Story content is required", "error");
+        return;
+    }
+
+    const body = { title, content, mood };
+
+    if (dateVal) {
+        // datetime-local value is in the browser's local time; treat as Jakarta
+        const d = new Date(dateVal);
+        const jakartaOffset = 7 * 60 * 60 * 1000;
+        body.createdAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000 + jakartaOffset).toISOString();
+    }
+
+    try {
+        if (id) {
+            await apiCall(`/api/stories/${id}`, "PUT", body);
+            showToast("Story updated successfully", "success");
+        } else {
+            await apiCall("/api/stories", "POST", body);
+            showToast("Story saved successfully", "success");
+        }
+        el.storyModal.classList.remove("active");
+        fetchStories();
+    } catch (err) {
+        showToast(err.message || "Failed to save story", "error");
+    }
+}
+
+async function deleteStory(id) {
+    if (!confirm("Are you sure you want to delete this story?")) return;
+    try {
+        await apiCall(`/api/stories/${id}`, "DELETE");
+        showToast("Story deleted successfully", "success");
+        fetchStories();
+    } catch (err) {
+        showToast("Failed to delete story", "error");
+    }
 }
 
 // Helper: Show specific screen
@@ -383,6 +572,8 @@ function switchTab(tab) {
         fetchStats();
     } else if (tab === "food") {
         fetchFoodLogs();
+    } else if (tab === "stories") {
+        fetchStories();
     }
 }
 

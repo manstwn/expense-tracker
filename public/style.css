@@ -1137,6 +1137,159 @@ table:has(#current-day-tbody) th {
     color-scheme: dark;
 }
 
+/* ======================================================
+   STORIES (DIARY) COMPONENT
+   ====================================================== */
+.stories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.story-card {
+    padding: 20px;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: var(--transition-smooth);
+}
+
+.story-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(139, 92, 246, 0.15);
+}
+
+.story-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.story-mood-badge {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.story-card-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.story-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin: 0;
+}
+
+.story-card-content {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.story-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.story-card-relative {
+    font-weight: 600;
+    color: var(--accent-purple);
+    opacity: 0.8;
+}
+
+.stories-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 20px;
+    border-radius: 18px;
+    gap: 4px;
+}
+
+.stories-empty h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.stories-empty p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.story-textarea {
+    width: 100%;
+    min-height: 140px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: var(--transition-smooth);
+}
+
+.story-textarea:focus {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 8px var(--accent-purple-glow);
+}
+
+.story-mood-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.mood-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.3);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-smooth);
+}
+
+.mood-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.08);
+}
+
+.mood-btn.active {
+    border-color: var(--accent-purple);
+    background: rgba(139, 92, 246, 0.2);
+    box-shadow: 0 0 10px var(--accent-purple-glow);
+    transform: scale(1.1);
+}
+
 .form-row {
     display: flex;
     gap: 15px;
@@ -1733,7 +1886,8 @@ table:has(#current-day-tbody) th {
     font-weight: 600;
     gap: 1px;
     height: 100%;
-    width: 22%;
+    flex: 1;
+    min-width: 0;
     transition: var(--transition-smooth);
     outline: none;
 }
@@ -2233,7 +2387,7 @@ textarea:focus-visible,
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .bottom-nav-item {
-        width: 20%;
+        flex: 1;
         gap: 3px;
         font-size: 10px;
         border-radius: 12px;
