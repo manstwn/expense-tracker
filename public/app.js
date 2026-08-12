@@ -1210,7 +1210,7 @@ function renderRecentTransactionsMiniTable(transactions) {
 function renderAllTransactionsTable() {
     el.allTbody.innerHTML = "";
     if (state.transactions.length === 0) {
-        el.allTbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-secondary)">No transactions found</td></tr>`;
+        el.allTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary)">No transactions found</td></tr>`;
         return;
     }
     
@@ -1228,13 +1228,6 @@ function renderAllTransactionsTable() {
             dayGroupClass = dayGroupClass === "day-group-1" ? "day-group-2" : "day-group-1";
         }
         
-        let displayUsername = t.username;
-        if (!displayUsername && t.userId && t.userId.toString() === "1828479746") {
-            displayUsername = "imanstwn";
-        }
-        const userLabel = displayUsername ? `@${displayUsername}` : (t.userId ? `ID: ${t.userId}` : "-");
-        const avatarChar = (displayUsername || "U").charAt(0).toUpperCase();
-        
         const tr = document.createElement("tr");
         tr.className = dayGroupClass;
         tr.innerHTML = `
@@ -1242,17 +1235,11 @@ function renderAllTransactionsTable() {
             <td><span class="tx-amount ${t.type}">Rp${formatCurrency(t.amount)}</span></td>
             <td><span class="tx-badge ${t.type}">${escapeHtml(t.category)}</span></td>
             <td style="text-transform: capitalize;">${t.type}</td>
-            <td>
-                <div class="user-tag">
-                    <div class="avatar">${avatarChar}</div>
-                    <span>${userLabel}</span>
-                </div>
-            </td>
             <td>${formattedDate}</td>
             <td>
                 <div class="action-btns">
-                    <button class="action-btn edit" data-id="${t._id}"><i data-lucide="edit-3"></i></button>
-                    <button class="action-btn delete" data-id="${t._id}"><i data-lucide="trash-2"></i></button>
+                    <button class="action-btn edit" data-id="${t._id}" title="Edit"><i data-lucide="edit-3"></i></button>
+                    <button class="action-btn delete" data-id="${t._id}" title="Delete"><i data-lucide="trash-2"></i></button>
                 </div>
             </td>
         `;
@@ -1964,8 +1951,13 @@ function formatTableDate(date) {
 
     const relativeStr = getRelativeTimeString(date);
     return `
-        <div>${dateStr} <span style="color: var(--text-secondary); font-size: 11px; font-weight: 600; margin-left: 4px;">${timeStr}</span></div>
-        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${relativeStr}</div>
+        <div class="tx-date-cell">
+            <div class="tx-date-main">
+                <span class="tx-date-text">${dateStr}</span>
+                <span class="tx-time-badge">${timeStr}</span>
+            </div>
+            <div class="tx-date-relative">${relativeStr}</div>
+        </div>
     `;
 }
 

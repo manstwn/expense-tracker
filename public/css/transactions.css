@@ -137,3 +137,83 @@
     color: var(--text-secondary);
     font-size: 13px;
 }
+
+/* Transaction Table Amounts & Badges */
+.tx-amount {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.tx-amount.expense {
+    color: var(--danger-red);
+}
+
+.tx-amount.income {
+    color: var(--success-green);
+}
+
+.tx-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.tx-badge.expense {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.tx-badge.income {
+    background: rgba(16, 185, 129, 0.12);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* Date Cell Layout */
+.tx-date-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.tx-date-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.tx-date-text {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.tx-time-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-purple);
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding: 1px 6px;
+    border-radius: 6px;
+}
+
+.tx-date-relative {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* Action Buttons side-by-side */
+.action-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
