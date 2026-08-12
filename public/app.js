@@ -24,7 +24,8 @@ const state = {
     tempParsedItems: [], // Store temporary items returned from AI Quick Parse
     chartMode: "day", // "day" or "item"
     chartMaxItems: 10, // Default to top 10 items
-    calendarDate: new Date()
+    calendarDate: new Date(),
+    allStories: []
 };
 
 // Elements
@@ -129,7 +130,17 @@ const el = {
     storyFormContent: document.getElementById("story-form-content"),
     storyFormDate: document.getElementById("story-form-date"),
     storyFormMood: document.getElementById("story-form-mood"),
-    storyMoodPicker: document.getElementById("story-mood-picker")
+    storyMoodPicker: document.getElementById("story-mood-picker"),
+
+    // Story View Modal
+    storyViewModal: document.getElementById("story-view-modal"),
+    storyViewCloseBtn: document.getElementById("story-view-close-btn"),
+    storyViewMood: document.getElementById("story-view-mood"),
+    storyViewTitle: document.getElementById("story-view-title"),
+    storyViewMeta: document.getElementById("story-view-meta"),
+    storyViewContent: document.getElementById("story-view-content"),
+    storyViewPrevBtn: document.getElementById("story-view-prev"),
+    storyViewNextBtn: document.getElementById("story-view-next")
 };
 
 // Register custom Chart.js tooltip positioner to follow mouse cursor
@@ -212,6 +223,14 @@ function initStoryModal() {
         if (e.target === storyModal) storyModal.classList.remove("active");
     });
 
+    // Story view modal
+    if (el.storyViewCloseBtn) el.storyViewCloseBtn.addEventListener("click", () => el.storyViewModal.classList.remove("active"));
+    if (el.storyViewModal) el.storyViewModal.addEventListener("click", (e) => {
+        if (e.target === el.storyViewModal) el.storyViewModal.classList.remove("active");
+    });
+    if (el.storyViewPrevBtn) el.storyViewPrevBtn.addEventListener("click", () => changeStoryView(-1));
+    if (el.storyViewNextBtn) el.storyViewNextBtn.addEventListener("click", () => changeStoryView(1));
+
     // Mood picker single-select
     if (el.storyMoodPicker) {
         el.storyMoodPicker.addEventListener("click", (e) => {
@@ -229,10 +248,21 @@ function initStoryModal() {
 async function fetchStories() {
     try {
         const data = await apiCall("/api/stories");
-        renderStoriesList(data.stories || []);
+        state.allStories = data.stories || [];
+        renderStoriesList(state.allStories);
     } catch (err) {
         console.error("Failed to fetch stories:", err);
         showToast("Failed to fetch stories", "error");
+    }
+}
+
+async function loadStoriesData() {
+    try {
+        const data = await apiCall("/api/stories");
+        state.allStories = data.stories || [];
+    } catch (err) {
+        console.error("Failed to load stories data:", err);
+        state.allStories = state.allStories || [];
     }
 }
 
@@ -263,8 +293,9 @@ function renderStoriesList(stories) {
             <div class="story-card-header">
                 <span class="story-mood-badge" title="Mood">${mood}</span>
                 <div class="story-card-actions">
-                    <button class="action-btn edit" data-id="${story._id}"><i data-lucide="edit-3"></i></button>
-                    <button class="action-btn delete" data-id="${story._id}"><i data-lucide="trash-2"></i></button>
+                    <button class="action-btn view" data-id="${story._id}" title="Read"><i data-lucide="eye"></i></button>
+                    <button class="action-btn edit" data-id="${story._id}" title="Edit"><i data-lucide="edit-3"></i></button>
+                    <button class="action-btn delete" data-id="${story._id}" title="Delete"><i data-lucide="trash-2"></i></button>
                 </div>
             </div>
             <h3 class="story-card-title">${escapeHtml(title)}</h3>
@@ -275,6 +306,7 @@ function renderStoriesList(stories) {
             </div>
         `;
 
+        card.querySelector(".view").addEventListener("click", () => openStoryView(story));
         card.querySelector(".edit").addEventListener("click", () => openStoryModal(story));
         card.querySelector(".delete").addEventListener("click", () => deleteStory(story._id));
 
@@ -355,6 +387,62 @@ async function handleStoryFormSubmit(e) {
     }
 }
 
+// Story view modal queue navigation state
+let storyViewQueue = [];
+let storyViewIndex = 0;
+
+function openStoryView(story, queue) {
+    if (!el.storyViewModal) return;
+
+    if (Array.isArray(queue) && queue.length > 0) {
+        storyViewQueue = queue;
+        storyViewIndex = queue.findIndex(s => s._id === story._id);
+        if (storyViewIndex === -1) storyViewIndex = 0;
+    } else {
+        storyViewQueue = [story];
+        storyViewIndex = 0;
+    }
+
+    renderStoryView(storyViewIndex);
+    el.storyViewModal.classList.add("active");
+    createIconsSafe();
+}
+
+function changeStoryView(dir) {
+    if (storyViewQueue.length === 0) return;
+    storyViewIndex = (storyViewIndex + dir + storyViewQueue.length) % storyViewQueue.length;
+    renderStoryView(storyViewIndex);
+    createIconsSafe();
+}
+
+function renderStoryView(idx) {
+    const story = storyViewQueue[idx] || {};
+    const d = new Date(story.createdAt);
+    const dateStr = formatLocalIndonesianDate(d, false);
+    const timeStr = new Intl.DateTimeFormat("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    }).format(d);
+    const tzLabel = getLocalTimeZoneLabel();
+
+    const mood = story.mood || "😐";
+    const title = story.title || "Untitled Story";
+    const multi = storyViewQueue.length > 1;
+
+    el.storyViewMood.textContent = mood;
+    el.storyViewTitle.textContent = title;
+    el.storyViewMeta.innerHTML = `
+        <span><i data-lucide="calendar" style="width: 13px; height: 13px; vertical-align: -2px;"></i> ${dateStr} ${timeStr} ${tzLabel}</span>
+        ${multi ? `<span class="story-view-count">${idx + 1} / ${storyViewQueue.length}</span>` : ""}
+    `;
+    el.storyViewContent.textContent = story.content || "";
+    el.storyViewContent.scrollTop = 0;
+
+    if (el.storyViewPrevBtn) el.storyViewPrevBtn.style.display = multi ? "inline-flex" : "none";
+    if (el.storyViewNextBtn) el.storyViewNextBtn.style.display = multi ? "inline-flex" : "none";
+}
+
 async function deleteStory(id) {
     if (!confirm("Are you sure you want to delete this story?")) return;
     try {
@@ -425,7 +513,7 @@ async function verifySession() {
 async function loadDashboardData() {
     fetchStats();
     fetchUsers();
-    await fetchTransactions(); // Wait for all data before deriving views
+    await Promise.all([fetchTransactions(), loadStoriesData()]); // Wait for data before deriving views
     renderCurrentDayFromState(); // Filter today's transactions from state
     renderTopExpensesFromState(); // Sort top expenses from state
     renderExpenseCalendar(); // Render Calendar View with expenses
@@ -563,6 +651,7 @@ function switchTab(tab) {
         fetchTransactions();
     } else if (tab === "overview") {
         fetchStats();
+        loadStoriesData().then(() => renderExpenseCalendar());
         // Re-render overview derived views from cached state
         renderRecentTransactionsMiniTable(state.allTransactions.slice(0, 10));
         renderCurrentDayFromState();
@@ -1910,6 +1999,19 @@ function renderExpenseCalendar() {
             dayExpenseMap[dayNum].items.push(t);
         }
     });
+
+    // Map stories by Jakarta day (YYYY-MM-DD) for this calendar
+    const storyDayMap = {};
+    (state.allStories || []).forEach(s => {
+        if (!s.createdAt) return;
+        const jStr = toJakartaDateStrClient(new Date(s.createdAt));
+        const [sY, sM, sD] = jStr.split("-").map(Number);
+        if (sY === currentYear && (sM - 1) === currentMonth) {
+            if (!storyDayMap[sD]) storyDayMap[sD] = [];
+            storyDayMap[sD].push(s);
+        }
+    });
+    Object.values(storyDayMap).forEach(list => list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     
     Object.keys(dayExpenseMap).forEach(dayKey => {
         const dayTotal = dayExpenseMap[dayKey].total;
@@ -1980,14 +2082,62 @@ function renderExpenseCalendar() {
             itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
         }
         
+        // Story indicator: green journal + marquee title when stories exist, red icon when none
+        const dayStories = storyDayMap[day] || [];
+        const hasStories = dayStories.length > 0;
+        let storyHtml = "";
+        if (hasStories) {
+            const titleText = dayStories[0].title || "Untitled Story";
+            const duration = Math.max(6, Math.min(Math.round(titleText.length * 0.6), 20));
+            const shouldMarquee = titleText.length > 24;
+            if (shouldMarquee) {
+                storyHtml = `
+                    <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
+                        <i data-lucide="notebook-pen" class="cal-story-icon"></i>
+                        <span class="cal-story-text marquee">
+                            <span class="cal-story-marquee-inner" style="animation-duration:${duration}s">
+                                <span class="cal-story-copy">${escapeHtml(titleText)}</span>
+                                <span class="cal-story-copy">${escapeHtml(titleText)}</span>
+                            </span>
+                        </span>
+                    </button>
+                `;
+            } else {
+                storyHtml = `
+                    <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
+                        <i data-lucide="notebook-pen" class="cal-story-icon"></i>
+                        <span class="cal-story-text">${escapeHtml(titleText)}</span>
+                    </button>
+                `;
+            }
+        } else {
+            storyHtml = `
+                <span class="cal-story-wrap no-stories" title="No stories this day">
+                    <i data-lucide="notebook-pen" class="cal-story-icon"></i>
+                </span>
+            `;
+        }
+
         cell.innerHTML = `
             <div class="calendar-day-header">
-                <span class="calendar-day-number">${day}</span>
+                <div class="cal-day-left">
+                    <span class="calendar-day-number">${day}</span>
+                    ${storyHtml}
+                </div>
                 ${headerRight}
             </div>
             ${itemsListHtml}
         `;
-        
+
+        // Story click: open read modal for this day's stories
+        const storyBtn = cell.querySelector(".cal-story-wrap.has-stories");
+        if (storyBtn) {
+            storyBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openStoryView(dayStories[0], dayStories);
+            });
+        }
+
         if (dayData && dayData.items.length > 0) {
             cell.addEventListener("click", () => openCalendarDayModal(currentYear, currentMonth, day, dayData));
         }

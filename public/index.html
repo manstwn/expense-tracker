@@ -562,6 +562,27 @@
         </div>
     </div>
 
+    <!-- MODAL: READ STORY -->
+    <div id="story-view-modal" class="modal-overlay">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <div class="story-view-title">
+                    <span id="story-view-mood" class="story-mood-badge">😐</span>
+                    <h3 id="story-view-title" style="margin: 0;">Story</h3>
+                </div>
+                <div class="story-view-nav">
+                    <button type="button" class="btn-icon-sm" id="story-view-prev" title="Previous story" style="display: none;"><i data-lucide="chevron-left"></i></button>
+                    <button type="button" class="btn-icon-sm" id="story-view-next" title="Next story" style="display: none;"><i data-lucide="chevron-right"></i></button>
+                    <button class="modal-close" id="story-view-close-btn"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="story-view-meta" class="story-view-meta"></div>
+                <div id="story-view-content" class="story-view-content"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: ADD/EDIT TRANSACTION -->
     <div id="tx-modal" class="modal-overlay">
         <div class="modal-content glass">
@@ -732,6 +753,6 @@
     </div>
 
     <!-- App Script -->
-    <script src="app.js?v=1.9.1"></script>
+    <script src="app.js?v=1.9.3"></script>
 </body>
 </html>

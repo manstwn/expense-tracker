@@ -882,6 +882,11 @@ table:has(#current-day-tbody) th {
     color: var(--danger-red);
 }
 
+.action-btn.view:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+
 /* Controls inside Transactions Tab */
 .table-controls {
     display: flex;
@@ -1211,6 +1216,59 @@ table:has(#current-day-tbody) th {
     font-weight: 600;
     color: var(--accent-purple);
     opacity: 0.8;
+}
+
+/* Story read/view modal */
+.story-view-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.story-view-title h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.story-view-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.story-view-count {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-purple);
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid var(--accent-purple);
+    border-radius: 12px;
+    padding: 2px 8px;
+}
+
+.story-view-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.story-view-content {
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .stories-empty {
@@ -2127,6 +2185,97 @@ table:has(#current-day-tbody) th {
     margin-bottom: 6px;
     padding-bottom: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cal-day-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+    width: 100%;
+}
+
+.cal-story-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+    width: 100%;
+    padding: 1px 3px;
+    border: none;
+    background: transparent;
+    cursor: default;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    overflow: hidden;
+    text-align: left;
+    transition: var(--transition-smooth);
+}
+
+.cal-story-wrap.has-stories {
+    cursor: pointer;
+    color: #34d399;
+}
+
+.cal-story-wrap.has-stories:hover {
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.25);
+}
+
+.cal-story-wrap.no-stories {
+    color: #ef4444;
+    opacity: 0.55;
+    flex: 0 0 auto;
+    width: auto;
+    cursor: default;
+}
+
+.cal-story-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.cal-story-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.cal-story-text.marquee {
+    text-overflow: clip;
+}
+
+.cal-story-marquee-inner {
+    display: inline-flex;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+.cal-story-text.marquee .cal-story-marquee-inner {
+    animation: story-scroll 8s linear infinite;
+}
+
+.cal-story-copy {
+    flex-shrink: 0;
+    padding-right: 24px;
+}
+
+@keyframes story-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cal-story-marquee-inner {
+        animation: none;
+    }
 }
 
 .calendar-day-number {
