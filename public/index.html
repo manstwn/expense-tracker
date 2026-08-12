@@ -16,7 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="style.css?v=1.8.2">
+    <link rel="stylesheet" href="style.css?v=1.8.3">
 </head>
 <body>
     <div class="bg-blur-circles">
@@ -522,11 +522,12 @@
                         <input type="text" id="form-item" placeholder="e.g. Starbucks Coffee" required>
                     </div>
 
+                    <div class="form-group">
+                        <label for="form-amount">Amount (Rp)</label>
+                        <input type="number" id="form-amount" placeholder="e.g. 35000" min="0" required>
+                    </div>
+
                     <div class="form-row">
-                        <div class="form-group col-6">
-                            <label for="form-amount">Amount (Rp)</label>
-                            <input type="number" id="form-amount" placeholder="e.g. 35000" min="0" required>
-                        </div>
                         <div class="form-group col-6">
                             <label for="form-date-only">Date</label>
                             <div class="input-icon-wrap">
@@ -534,13 +535,12 @@
                                 <input type="date" id="form-date-only" required onclick="this.showPicker && this.showPicker()">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="form-time-only">Time</label>
-                        <div class="input-icon-wrap">
-                            <i data-lucide="clock"></i>
-                            <input type="time" id="form-time-only" required onclick="this.showPicker && this.showPicker()">
+                        <div class="form-group col-6">
+                            <label for="form-time-only">Time</label>
+                            <div class="input-icon-wrap">
+                                <i data-lucide="clock"></i>
+                                <input type="time" id="form-time-only" required onclick="this.showPicker && this.showPicker()">
+                            </div>
                         </div>
                     </div>
 
