@@ -32,6 +32,10 @@
     animation: modalSlideUp 0.3s ease;
 }
 
+.modal-content.modal-lg {
+    max-width: 850px;
+}
+
 @keyframes modalSlideUp {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }

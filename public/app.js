@@ -159,6 +159,7 @@ function initElementsCache() {
     el.storyFormId = document.getElementById("story-form-id");
     el.storyFormTitle = document.getElementById("story-form-title");
     el.storyFormContent = document.getElementById("story-form-content");
+    el.storyFormAiContent = document.getElementById("story-form-ai-content");
     el.storyFormDate = document.getElementById("story-form-date");
     el.storyFormMood = document.getElementById("story-form-mood");
     el.storyMoodPicker = document.getElementById("story-mood-picker");
@@ -170,6 +171,8 @@ function initElementsCache() {
     el.storyViewTitle = document.getElementById("story-view-title");
     el.storyViewMeta = document.getElementById("story-view-meta");
     el.storyViewContent = document.getElementById("story-view-content");
+    el.storyViewAiContent = document.getElementById("story-view-ai-content");
+    el.storyViewAiPane = document.getElementById("story-view-ai-pane");
     el.storyViewPrevBtn = document.getElementById("story-view-prev");
     el.storyViewNextBtn = document.getElementById("story-view-next");
 }
@@ -280,21 +283,23 @@ function initStoryModal() {
         prettifyBtn.addEventListener("click", async () => {
             const content = el.storyFormContent.value;
             if (!content || !content.trim()) {
-                showToast("Please enter some story content first", "error");
+                showToast("Tulis cerita asli di kolom Teks Asli terlebih dahulu", "error");
                 return;
             }
 
             const originalBtnHtml = prettifyBtn.innerHTML;
             prettifyBtn.disabled = true;
-            prettifyBtn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i> <span>Formatting...</span>`;
+            prettifyBtn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i> <span>Memproses...</span>`;
             createIconsSafe();
 
             try {
                 const res = await apiCall("/api/stories/prettify", "POST", { content });
                 if (res.success && res.prettified) {
                     const { title, content: formattedContent, mood } = res.prettified;
-                    if (formattedContent) {
-                        el.storyFormContent.value = formattedContent;
+                    
+                    // Put output in column 2 (Hasil AI) WITHOUT deleting or replacing column 1 (Teks Asli)!
+                    if (formattedContent && el.storyFormAiContent) {
+                        el.storyFormAiContent.value = formattedContent;
                     }
                     if (title && !el.storyFormTitle.value.trim()) {
                         el.storyFormTitle.value = title;
@@ -305,11 +310,11 @@ function initStoryModal() {
                             b.classList.toggle("active", b.dataset.mood === mood);
                         });
                     }
-                    showToast("Story formatted with AI!", "success");
+                    showToast("Hasil rapian AI Bahasa Indonesia berhasil dibuat!", "success");
                 }
             } catch (err) {
                 console.error("AI Prettify failed:", err);
-                showToast(err.message || "Failed to format story", "error");
+                showToast(err.message || "Gagal memproses AI", "error");
             } finally {
                 prettifyBtn.disabled = false;
                 prettifyBtn.innerHTML = originalBtnHtml;
@@ -421,6 +426,7 @@ function openStoryModal(story) {
         el.storyFormId.value = story._id;
         el.storyFormTitle.value = story.title || "";
         el.storyFormContent.value = story.content || "";
+        if (el.storyFormAiContent) el.storyFormAiContent.value = story.aiContent || "";
 
         const moodVal = story.mood || "";
         el.storyFormMood.value = moodVal;
@@ -432,6 +438,7 @@ function openStoryModal(story) {
         el.storyFormDate.value = toDatetimeLocalValue(dateObj);
     } else {
         el.storyModalTitle.innerHTML = `<i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>New Story`;
+        if (el.storyFormAiContent) el.storyFormAiContent.value = "";
         el.storyFormDate.value = toDatetimeLocalValue(new Date());
     }
 
@@ -445,15 +452,16 @@ async function handleStoryFormSubmit(e) {
     const id = el.storyFormId.value;
     const title = el.storyFormTitle.value.trim();
     const content = el.storyFormContent.value.trim();
+    const aiContent = el.storyFormAiContent ? el.storyFormAiContent.value.trim() : "";
     const mood = el.storyFormMood.value;
     const dateVal = el.storyFormDate.value;
 
     if (!content) {
-        showToast("Story content is required", "error");
+        showToast("Teks cerita asli wajib diisi", "error");
         return;
     }
 
-    const body = { title, content, mood };
+    const body = { title, content, aiContent, mood };
 
     if (dateVal) {
         // datetime-local value = user's wall clock in their own timezone
@@ -527,6 +535,11 @@ function renderStoryView(idx) {
     `;
     el.storyViewContent.textContent = story.content || "";
     el.storyViewContent.scrollTop = 0;
+
+    if (el.storyViewAiContent) {
+        el.storyViewAiContent.textContent = story.aiContent || "Belum ada hasil rapian AI. Klik Edit untuk membuat versi AI Bahasa Indonesia.";
+        el.storyViewAiContent.scrollTop = 0;
+    }
 
     if (el.storyViewPrevBtn) el.storyViewPrevBtn.style.display = multi ? "inline-flex" : "none";
     if (el.storyViewNextBtn) el.storyViewNextBtn.style.display = multi ? "inline-flex" : "none";

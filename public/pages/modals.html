@@ -26,7 +26,7 @@
 
 <!-- MODAL: ADD/EDIT STORY -->
 <div id="story-modal" class="modal-overlay">
-    <div class="modal-content glass">
+    <div class="modal-content glass modal-lg">
         <div class="modal-header">
             <h3 id="story-modal-title"><i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>New Story</h3>
             <button class="modal-close" id="story-modal-close-btn"><i data-lucide="x"></i></button>
@@ -36,18 +36,28 @@
                 <input type="hidden" id="story-form-id">
 
                 <div class="form-group">
-                    <label for="story-form-title">Title <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span></label>
-                    <input type="text" id="story-form-title" placeholder="e.g. A beautiful day at the beach">
+                    <label for="story-form-title">Judul / Title <span style="color: var(--text-secondary); font-weight: 400;">(opsional)</span></label>
+                    <input type="text" id="story-form-title" placeholder="contoh: Hari yang indah di pantai">
                 </div>
 
                 <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label for="story-form-content">Content</label>
-                        <button type="button" id="story-ai-prettify-btn" class="btn-ai-sparkle-sm" title="Auto-format paragraphs, punctuation & readability with AI">
-                            <i data-lucide="sparkles"></i> <span>AI Prettify</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label>Teks Cerita (2 Kolom: Original & AI)</label>
+                        <button type="button" id="story-ai-prettify-btn" class="btn-ai-sparkle-sm" title="Rapikan teks asli menjadi paragraf Bahasa Indonesia yang baik">
+                            <i data-lucide="sparkles"></i> <span>Format AI Bahasa Indonesia</span>
                         </button>
                     </div>
-                    <textarea id="story-form-content" class="story-textarea" placeholder="Write your story here..." required></textarea>
+                    
+                    <div class="story-split-container">
+                        <div class="story-col">
+                            <span class="story-col-label"><i data-lucide="file-text"></i> Teks Asli (Original)</span>
+                            <textarea id="story-form-content" class="story-textarea" placeholder="Tulis cerita asli kamu di sini..." required></textarea>
+                        </div>
+                        <div class="story-col">
+                            <span class="story-col-label ai"><i data-lucide="sparkles"></i> Hasil AI (Versi Paragraf Rapi)</span>
+                            <textarea id="story-form-ai-content" class="story-textarea ai" placeholder="Hasil rapian AI Bahasa Indonesia akan tampil di sini..."></textarea>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -65,7 +75,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="story-form-date">Date</label>
+                    <label for="story-form-date">Tanggal</label>
                     <div class="input-icon-wrap">
                         <i data-lucide="calendar"></i>
                         <input type="datetime-local" id="story-form-date" onclick="this.showPicker && this.showPicker()">
@@ -73,8 +83,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" id="story-form-cancel-btn" class="btn btn-secondary">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Story</button>
+                    <button type="button" id="story-form-cancel-btn" class="btn btn-secondary">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Cerita</button>
                 </div>
             </form>
         </div>
@@ -83,7 +93,7 @@
 
 <!-- MODAL: READ STORY -->
 <div id="story-view-modal" class="modal-overlay">
-    <div class="modal-content glass">
+    <div class="modal-content glass modal-lg">
         <div class="modal-header">
             <div class="story-view-title">
                 <span id="story-view-mood" class="story-mood-badge">😐</span>
@@ -96,8 +106,18 @@
             </div>
         </div>
         <div class="modal-body">
-            <div id="story-view-meta" class="story-view-meta"></div>
-            <div id="story-view-content" class="story-view-content"></div>
+            <div id="story-view-meta" class="story-view-meta mb-3"></div>
+            
+            <div class="story-view-split-container">
+                <div class="story-view-pane">
+                    <div class="pane-header"><i data-lucide="file-text"></i> Teks Asli (Original)</div>
+                    <div id="story-view-content" class="story-view-content"></div>
+                </div>
+                <div class="story-view-pane ai" id="story-view-ai-pane">
+                    <div class="pane-header ai"><i data-lucide="sparkles"></i> Hasil AI (Versi Paragraf Rapi)</div>
+                    <div id="story-view-ai-content" class="story-view-content ai"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
