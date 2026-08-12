@@ -274,6 +274,50 @@ function initStoryModal() {
         });
     }
 
+    // AI Prettify / Format Story listener
+    const prettifyBtn = document.getElementById("story-ai-prettify-btn");
+    if (prettifyBtn) {
+        prettifyBtn.addEventListener("click", async () => {
+            const content = el.storyFormContent.value;
+            if (!content || !content.trim()) {
+                showToast("Please enter some story content first", "error");
+                return;
+            }
+
+            const originalBtnHtml = prettifyBtn.innerHTML;
+            prettifyBtn.disabled = true;
+            prettifyBtn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 13px; height: 13px;"></i> <span>Formatting...</span>`;
+            createIconsSafe();
+
+            try {
+                const res = await apiCall("/api/stories/prettify", "POST", { content });
+                if (res.success && res.prettified) {
+                    const { title, content: formattedContent, mood } = res.prettified;
+                    if (formattedContent) {
+                        el.storyFormContent.value = formattedContent;
+                    }
+                    if (title && !el.storyFormTitle.value.trim()) {
+                        el.storyFormTitle.value = title;
+                    }
+                    if (mood && !el.storyFormMood.value && el.storyMoodPicker) {
+                        el.storyFormMood.value = mood;
+                        el.storyMoodPicker.querySelectorAll(".mood-btn").forEach(b => {
+                            b.classList.toggle("active", b.dataset.mood === mood);
+                        });
+                    }
+                    showToast("Story formatted with AI!", "success");
+                }
+            } catch (err) {
+                console.error("AI Prettify failed:", err);
+                showToast(err.message || "Failed to format story", "error");
+            } finally {
+                prettifyBtn.disabled = false;
+                prettifyBtn.innerHTML = originalBtnHtml;
+                createIconsSafe();
+            }
+        });
+    }
+
     storyForm.addEventListener("submit", handleStoryFormSubmit);
 }
 

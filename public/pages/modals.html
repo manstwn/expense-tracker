@@ -41,7 +41,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="story-form-content">Content</label>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label for="story-form-content">Content</label>
+                        <button type="button" id="story-ai-prettify-btn" class="btn-ai-sparkle-sm" title="Auto-format paragraphs, punctuation & readability with AI">
+                            <i data-lucide="sparkles"></i> <span>AI Prettify</span>
+                        </button>
+                    </div>
                     <textarea id="story-form-content" class="story-textarea" placeholder="Write your story here..." required></textarea>
                 </div>
 
