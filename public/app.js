@@ -26,7 +26,8 @@ const state = {
     chartMaxItems: 10, // Default to top 10 items
     calendarDate: new Date(),
     allStories: []
-};
+// Global Constants
+const DAY_COLOR_CLASSES = ["day-group-purple", "day-group-pink", "day-group-cyan", "day-group-amber"];
 
 // Elements object container
 const el = {};
@@ -556,8 +557,6 @@ function logout() {
     showToast("Logged out successfully", "success");
 }
 
-el.logoutBtn.addEventListener("click", logout);
-
 // ======================================================
 // PIN KEYPAD LOGIN SYSTEM
 // ======================================================
@@ -648,6 +647,10 @@ function initTabs() {
             if (tab) switchTab(tab);
         });
     });
+
+    if (el.logoutBtn) {
+        el.logoutBtn.addEventListener("click", logout);
+    }
 
     const mobileLogout = document.getElementById("mobile-logout-btn");
     if (mobileLogout) {
@@ -1157,8 +1160,6 @@ function applyFiltersAndRender() {
         el.paginationInfo.textContent = `Showing ${state.transactions.length} of ${filtered.length} transactions`;
     }
 }
-
-const DAY_COLOR_CLASSES = ["day-group-purple", "day-group-pink", "day-group-cyan", "day-group-amber"];
 
 function renderRecentTransactionsMiniTable(transactions) {
     el.recentTbody.innerHTML = "";
