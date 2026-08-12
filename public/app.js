@@ -338,9 +338,22 @@ function renderStoriesList(stories) {
             </div>
         `;
 
-        card.querySelector(".view").addEventListener("click", () => openStoryView(story));
-        card.querySelector(".edit").addEventListener("click", () => openStoryModal(story));
-        card.querySelector(".delete").addEventListener("click", () => deleteStory(story._id));
+        card.addEventListener("click", (e) => {
+            if (e.target.closest(".action-btn")) return;
+            openStoryView(story);
+        });
+        card.querySelector(".view").addEventListener("click", (e) => {
+            e.stopPropagation();
+            openStoryView(story);
+        });
+        card.querySelector(".edit").addEventListener("click", (e) => {
+            e.stopPropagation();
+            openStoryModal(story);
+        });
+        card.querySelector(".delete").addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteStory(story._id);
+        });
 
         el.storiesGrid.appendChild(card);
     });
