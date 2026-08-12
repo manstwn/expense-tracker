@@ -451,6 +451,26 @@ svg.cal-story-icon,
     flex-direction: column;
     gap: 3px;
     padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.4) transparent;
+}
+
+/* Low-profile sleek scrollbar for calendar day cells */
+.calendar-day-items-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.calendar-day-items-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.calendar-day-items-list::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4);
+    border-radius: 3px;
+}
+
+.calendar-day-items-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(217, 70, 239, 0.7);
 }
 
 .cal-item-row {
