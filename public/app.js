@@ -246,13 +246,13 @@ function renderStoriesList(stories) {
 
     stories.forEach(story => {
         const d = new Date(story.createdAt);
-        const dateStr = formatJakartaIndonesianDate(d, false);
+        const dateStr = formatLocalIndonesianDate(d, false);
         const timeStr = new Intl.DateTimeFormat("id-ID", {
-            timeZone: "Asia/Jakarta",
             hour: "2-digit",
             minute: "2-digit",
             hour12: false
         }).format(d);
+        const tzLabel = getLocalTimeZoneLabel();
         const relativeStr = getRelativeTimeString(story.createdAt);
         const mood = story.mood || "😐";
         const title = story.title || "Untitled Story";
@@ -270,7 +270,7 @@ function renderStoriesList(stories) {
             <h3 class="story-card-title">${escapeHtml(title)}</h3>
             <p class="story-card-content">${escapeHtml(story.content)}</p>
             <div class="story-card-footer">
-                <span><i data-lucide="calendar" style="width: 12px; height: 12px; vertical-align: -1px;"></i> ${dateStr} ${timeStr} WIB</span>
+                <span><i data-lucide="calendar" style="width: 12px; height: 12px; vertical-align: -1px;"></i> ${dateStr} ${timeStr} ${tzLabel}</span>
                 <span class="story-card-relative">${relativeStr}</span>
             </div>
         `;
@@ -335,10 +335,9 @@ async function handleStoryFormSubmit(e) {
     const body = { title, content, mood };
 
     if (dateVal) {
-        // datetime-local value is in the browser's local time; treat as Jakarta
-        const d = new Date(dateVal);
-        const jakartaOffset = 7 * 60 * 60 * 1000;
-        body.createdAt = new Date(d.getTime() - d.getTimezoneOffset() * 60000 + jakartaOffset).toISOString();
+        // datetime-local value = user's wall clock in their own timezone
+        // Convert to the absolute UTC instant (international time), like transactions do.
+        body.createdAt = new Date(dateVal).toISOString();
     }
 
     try {
@@ -1773,6 +1772,44 @@ function formatJakartaIndonesianDate(dateInput, includeTime = true) {
     if (!includeTime) return dateStr;
     const timeStr = `${p.hour}:${p.minute}`;
     return `${dateStr} ${timeStr} WIB`;
+}
+
+// Viewer-local variant: formats using the browser's own timezone (multi-timezone support)
+function formatLocalIndonesianDate(dateInput, includeTime = true) {
+    if (!dateInput) return "-";
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return "-";
+
+    const formatter = new Intl.DateTimeFormat("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+
+    const parts = formatter.formatToParts(d);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+
+    const weekday = p.weekday ? p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1) : "";
+    const dateStr = `${weekday}, ${p.day} ${p.month} ${p.year}`;
+    if (!includeTime) return dateStr;
+    const timeStr = `${p.hour}:${p.minute}`;
+    return `${dateStr} ${timeStr}`;
+}
+
+// Short label for the viewer's own timezone, e.g. "GMT+7", "PDT", "WIB"
+function getLocalTimeZoneLabel() {
+    try {
+        const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(new Date());
+        const tz = parts.find(part => part.type === "timeZoneName");
+        return tz ? tz.value : "";
+    } catch (e) {
+        return "";
+    }
 }
 
 function formatTableDate(date) {
