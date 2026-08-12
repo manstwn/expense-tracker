@@ -1114,6 +1114,29 @@ table:has(#current-day-tbody) th {
     box-shadow: 0 0 8px var(--accent-purple-glow);
 }
 
+.input-icon-wrap {
+    position: relative;
+}
+
+.input-icon-wrap > i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: var(--text-secondary);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.input-icon-wrap input {
+    width: 100%;
+    padding-left: 30px;
+    cursor: pointer;
+    color-scheme: dark;
+}
+
 .form-row {
     display: flex;
     gap: 15px;
