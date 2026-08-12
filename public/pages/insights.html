@@ -1,0 +1,49 @@
+<!-- Insight KPIs Row -->
+<div class="kpi-grid">
+    <div class="kpi-card glass">
+        <div class="kpi-content">
+            <span>Top Category</span>
+            <h3 id="insight-top-category">-</h3>
+        </div>
+    </div>
+    <div class="kpi-card glass">
+        <div class="kpi-content">
+            <span>Daily Average</span>
+            <h3 id="insight-daily-avg">Rp0</h3>
+        </div>
+    </div>
+    <div class="kpi-card glass">
+        <div class="kpi-content">
+            <span>Avg Tx Value</span>
+            <h3 id="insight-avg-tx">Rp0</h3>
+        </div>
+    </div>
+    <div class="kpi-card glass">
+        <div class="kpi-content">
+            <span>Savings Rate</span>
+            <h3 id="insight-health">-</h3>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Donut Card -->
+    <div class="chart-container glass">
+        <div class="container-header">
+            <h3>Spend Distribution</h3>
+        </div>
+        <div class="chart-wrapper donut-wrapper">
+            <canvas id="category-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Category progress bars list -->
+    <div class="chart-container glass col-span-2">
+        <div class="container-header">
+            <h3>Category Breakdown</h3>
+        </div>
+        <div class="category-progress-container" id="category-progress-list">
+            <!-- Dynamic progress bars -->
+        </div>
+    </div>
+</div>

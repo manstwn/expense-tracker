@@ -1,0 +1,239 @@
+<!-- MODAL: ADD/EDIT FOOD LOG -->
+<div id="food-modal" class="modal-overlay">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <h3 id="food-modal-title">Log Food</h3>
+            <button class="modal-close" id="food-modal-close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="food-form">
+                <div class="form-group">
+                    <label for="food-form-name">Food Name</label>
+                    <input type="text" id="food-form-name" placeholder="e.g. Nasi Padang" required>
+                </div>
+                <div class="form-group">
+                    <label for="food-form-category">Category</label>
+                    <input type="text" id="food-form-category" placeholder="e.g. Makanan Berat" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="food-form-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Log Food</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADD/EDIT STORY -->
+<div id="story-modal" class="modal-overlay">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <h3 id="story-modal-title"><i data-lucide="notebook-pen" style="width: 18px; height: 18px; color: var(--accent-pink); display: inline-block; vertical-align: sub; margin-right: 6px;"></i>New Story</h3>
+            <button class="modal-close" id="story-modal-close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="story-form">
+                <input type="hidden" id="story-form-id">
+
+                <div class="form-group">
+                    <label for="story-form-title">Title <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span></label>
+                    <input type="text" id="story-form-title" placeholder="e.g. A beautiful day at the beach">
+                </div>
+
+                <div class="form-group">
+                    <label for="story-form-content">Content</label>
+                    <textarea id="story-form-content" class="story-textarea" placeholder="Write your story here..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Mood</label>
+                    <div class="story-mood-picker" id="story-mood-picker">
+                        <button type="button" class="mood-btn" data-mood="">😐</button>
+                        <button type="button" class="mood-btn" data-mood="😊">😊</button>
+                        <button type="button" class="mood-btn" data-mood="😌">😌</button>
+                        <button type="button" class="mood-btn" data-mood="😢">😢</button>
+                        <button type="button" class="mood-btn" data-mood="😴">😴</button>
+                        <button type="button" class="mood-btn" data-mood="🔥">🔥</button>
+                        <button type="button" class="mood-btn" data-mood="🤯">🤯</button>
+                        <input type="hidden" id="story-form-mood" value="">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="story-form-date">Date</label>
+                    <div class="input-icon-wrap">
+                        <i data-lucide="calendar"></i>
+                        <input type="datetime-local" id="story-form-date" onclick="this.showPicker && this.showPicker()">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="story-form-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Story</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: READ STORY -->
+<div id="story-view-modal" class="modal-overlay">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <div class="story-view-title">
+                <span id="story-view-mood" class="story-mood-badge">😐</span>
+                <h3 id="story-view-title" style="margin: 0;">Story</h3>
+            </div>
+            <div class="story-view-nav">
+                <button type="button" class="btn-icon-sm" id="story-view-prev" title="Previous story" style="display: none;"><i data-lucide="chevron-left"></i></button>
+                <button type="button" class="btn-icon-sm" id="story-view-next" title="Next story" style="display: none;"><i data-lucide="chevron-right"></i></button>
+                <button class="modal-close" id="story-view-close-btn"><i data-lucide="x"></i></button>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div id="story-view-meta" class="story-view-meta"></div>
+            <div id="story-view-content" class="story-view-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADD/EDIT TRANSACTION -->
+<div id="tx-modal" class="modal-overlay">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <h3 id="modal-title">Add Transaction</h3>
+            <button class="modal-close" id="modal-close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="tx-form">
+                <input type="hidden" id="form-tx-id">
+                
+                <div class="form-row">
+                    <div class="form-group col-6">
+                        <label for="form-type">Type</label>
+                        <select id="form-type" required>
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="form-category">Category</label>
+                        <select id="form-category" required>
+                            <option value="food">Food & Drinks</option>
+                            <option value="transport">Transport</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="bills">Bills & Utilities</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="salary">Salary</option>
+                            <option value="investment">Investment</option>
+                            <option value="manual">Manual / Others</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-item">Item Name</label>
+                    <input type="text" id="form-item" placeholder="e.g. Starbucks Coffee" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-amount">Amount (Rp)</label>
+                    <input type="number" id="form-amount" placeholder="e.g. 35000" min="0" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-6">
+                        <label for="form-date-only">Date</label>
+                        <div class="input-icon-wrap">
+                            <i data-lucide="calendar"></i>
+                            <input type="date" id="form-date-only" required onclick="this.showPicker && this.showPicker()">
+                        </div>
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="form-time-only">Time</label>
+                        <div class="input-icon-wrap">
+                            <i data-lucide="clock"></i>
+                            <input type="time" id="form-time-only" required onclick="this.showPicker && this.showPicker()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row" style="display: none;">
+                    <div class="form-group col-6">
+                        <label for="form-userid">Telegram User ID</label>
+                        <input type="number" id="form-userid" placeholder="e.g. 1828479746">
+                    </div>
+                    <div class="form-group col-6">
+                        <label for="form-username">Telegram Username</label>
+                        <input type="text" id="form-username" placeholder="e.g. imanstwn">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="form-cancel-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: QUICK AI PARSE -->
+<div id="ai-modal" class="modal-overlay">
+    <div class="modal-content glass">
+        <div class="modal-header">
+            <h3 id="ai-modal-title"><i data-lucide="sparkles" style="color: var(--accent-pink); width: 18px; height: 18px; display: inline-block; vertical-align: sub; margin-right: 6px;"></i>Quick AI Parse</h3>
+            <button class="modal-close" id="ai-modal-close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <p class="console-desc" style="margin-bottom: 15px; color: var(--text-secondary); font-size: 13px;">
+                Type your transaction details in natural language (e.g., "bakso 25k, grab 15k, gajian +3jt")
+            </p>
+            <div class="ai-input-group" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                <textarea id="ai-input-text" placeholder="Type transaction detail..." style="min-height: 100px; width: 100%; border: 1px solid var(--border-color); border-radius: 10px; background: rgba(0, 0, 0, 0.3); color: white; padding: 12px; font-size: 14px; resize: vertical; outline: none;"></textarea>
+                <button id="ai-parse-btn" class="btn btn-secondary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink)); color: white; border: none;">
+                    <i data-lucide="sparkles"></i> Parse Text
+                </button>
+            </div>
+            <div id="ai-preview" class="ai-preview-box hidden" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 12px; border-radius: 10px; margin-top: 15px; max-height: 250px; overflow-y: auto;">
+                <!-- Populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CALENDAR DAY DETAILS -->
+<div id="calendar-day-modal" class="modal-overlay">
+    <div class="modal-content glass" style="max-width: 520px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="cal-modal-date-title">Date Details</h3>
+                <p id="cal-modal-date-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Transactions breakdown for selected day</p>
+            </div>
+            <button class="modal-close" id="cal-modal-close-btn"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="cal-modal-total" style="font-size: 16px; font-weight: 700; color: #ff4a9e; margin-bottom: 12px;">Total: Rp0</div>
+            <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cal-modal-tbody">
+                        <!-- Dynamic items list -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="toast glass">
+    <i id="toast-icon" data-lucide="check-circle-2"></i>
+    <span id="toast-message">Action completed successfully</span>
+</div>

@@ -28,120 +28,148 @@ const state = {
     allStories: []
 };
 
-// Elements
-const el = {
-    loginScreen: document.getElementById("login-screen"),
-    dashboardScreen: document.getElementById("dashboard-screen"),
-    pinDots: document.querySelectorAll(".pin-dot"),
-    loginError: document.getElementById("login-error"),
-    loginContainer: document.querySelector(".login-container"),
+// Elements object container
+const el = {};
+
+async function loadDedicatedPages() {
+    const pageMap = [
+        { id: "login-screen", file: "pages/login.html" },
+        { id: "tab-overview", file: "pages/overview.html" },
+        { id: "tab-transactions", file: "pages/transactions.html" },
+        { id: "tab-food", file: "pages/food.html" },
+        { id: "tab-insights", file: "pages/insights.html" },
+        { id: "tab-stories", file: "pages/stories.html" },
+        { id: "modals-container", file: "pages/modals.html" }
+    ];
+
+    await Promise.all(pageMap.map(async item => {
+        const container = document.getElementById(item.id);
+        if (container) {
+            try {
+                const res = await fetch(item.file);
+                if (res.ok) {
+                    container.innerHTML = await res.text();
+                }
+            } catch (err) {
+                console.error(`Failed to load ${item.file}:`, err);
+            }
+        }
+    }));
+}
+
+function initElementsCache() {
+    el.loginScreen = document.getElementById("login-screen");
+    el.dashboardScreen = document.getElementById("dashboard-screen");
+    el.pinDots = document.querySelectorAll(".pin-dot");
+    el.loginError = document.getElementById("login-error");
+    el.loginContainer = document.querySelector(".login-container");
     
     // Sidebar Tabs
-    navItems: document.querySelectorAll(".nav-item"),
-    tabPanes: document.querySelectorAll(".tab-pane"),
-    logoutBtn: document.getElementById("logout-btn"),
+    el.navItems = document.querySelectorAll(".nav-item");
+    el.tabPanes = document.querySelectorAll(".tab-pane");
+    el.logoutBtn = document.getElementById("logout-btn");
     
     // KPIs
-    kpiTodayExpense: document.getElementById("kpi-today-expense"),
-    kpiMonthExpense: document.getElementById("kpi-month-expense"),
-    kpiMonthIncome: document.getElementById("kpi-month-income"),
-    kpiAvgDay: document.getElementById("kpi-avg-day"),
+    el.kpiTodayExpense = document.getElementById("kpi-today-expense");
+    el.kpiMonthExpense = document.getElementById("kpi-month-expense");
+    el.kpiMonthIncome = document.getElementById("kpi-month-income");
+    el.kpiAvgDay = document.getElementById("kpi-avg-day");
     
     // Tables
-    recentTbody: document.getElementById("recent-transactions-tbody"),
-    allTbody: document.getElementById("all-transactions-tbody"),
-    topExpensiveTbody: document.getElementById("top-expensive-tbody"),
+    el.recentTbody = document.getElementById("recent-transactions-tbody");
+    el.allTbody = document.getElementById("all-transactions-tbody");
+    el.topExpensiveTbody = document.getElementById("top-expensive-tbody");
     
     // Filters & Pagination
-    txSearch: document.getElementById("tx-search-input"),
-    txFilterUser: document.getElementById("tx-filter-user"),
-    txFilterDate: document.getElementById("tx-filter-date"),
-    txLimitSelect: document.getElementById("tx-limit-select"),
-    sortHeaders: document.querySelectorAll("th.sortable"),
-    paginationInfo: document.getElementById("pagination-info"),
-    paginationPrev: document.getElementById("pagination-prev"),
-    paginationNext: document.getElementById("pagination-next"),
+    el.txSearch = document.getElementById("tx-search-input");
+    el.txFilterUser = document.getElementById("tx-filter-user");
+    el.txFilterDate = document.getElementById("tx-filter-date");
+    el.txLimitSelect = document.getElementById("tx-limit-select");
+    el.sortHeaders = document.querySelectorAll("th.sortable");
+    el.paginationInfo = document.getElementById("pagination-info");
+    el.paginationPrev = document.getElementById("pagination-prev");
+    el.paginationNext = document.getElementById("pagination-next");
     
     // AI quick add
-    aiInput: document.getElementById("ai-input-text"),
-    aiParseBtn: document.getElementById("ai-parse-btn"),
-    aiPreview: document.getElementById("ai-preview"),
+    el.aiInput = document.getElementById("ai-input-text");
+    el.aiParseBtn = document.getElementById("ai-parse-btn");
+    el.aiPreview = document.getElementById("ai-preview");
     
     // Modal & Form
-    quickAddBtn: document.getElementById("quick-add-btn"),
-    modal: document.getElementById("tx-modal"),
-    modalTitle: document.getElementById("modal-title"),
-    modalCloseBtn: document.getElementById("modal-close-btn"),
-    formCancelBtn: document.getElementById("form-cancel-btn"),
-    form: document.getElementById("tx-form"),
-    formId: document.getElementById("form-tx-id"),
-    formType: document.getElementById("form-type"),
-    formCategory: document.getElementById("form-category"),
-    formItem: document.getElementById("form-item"),
-    formAmount: document.getElementById("form-amount"),
-    formDateOnly: document.getElementById("form-date-only"),
-    formTimeOnly: document.getElementById("form-time-only"),
-    formUserId: document.getElementById("form-userid"),
-    formUsername: document.getElementById("form-username"),
+    el.quickAddBtn = document.getElementById("quick-add-btn");
+    el.modal = document.getElementById("tx-modal");
+    el.modalTitle = document.getElementById("modal-title");
+    el.modalCloseBtn = document.getElementById("modal-close-btn");
+    el.formCancelBtn = document.getElementById("form-cancel-btn");
+    el.form = document.getElementById("tx-form");
+    el.formId = document.getElementById("form-tx-id");
+    el.formType = document.getElementById("form-type");
+    el.formCategory = document.getElementById("form-category");
+    el.formItem = document.getElementById("form-item");
+    el.formAmount = document.getElementById("form-amount");
+    el.formDateOnly = document.getElementById("form-date-only");
+    el.formTimeOnly = document.getElementById("form-time-only");
+    el.formUserId = document.getElementById("form-userid");
+    el.formUsername = document.getElementById("form-username");
     
     // Toast
-    toast: document.getElementById("toast"),
-    toastIcon: document.getElementById("toast-icon"),
-    toastMsg: document.getElementById("toast-message"),
+    el.toast = document.getElementById("toast");
+    el.toastIcon = document.getElementById("toast-icon");
+    el.toastMsg = document.getElementById("toast-message");
 
     // Chart Mode Toggle Buttons
-    chartModeDayBtn: document.getElementById("chart-mode-day"),
-    chartModeItemBtn: document.getElementById("chart-mode-item"),
-    chartMaxWrapper: document.getElementById("chart-max-wrapper"),
-    chartMaxSelect: document.getElementById("chart-max-select"),
+    el.chartModeDayBtn = document.getElementById("chart-mode-day");
+    el.chartModeItemBtn = document.getElementById("chart-mode-item");
+    el.chartMaxWrapper = document.getElementById("chart-max-wrapper");
+    el.chartMaxSelect = document.getElementById("chart-max-select");
     
     // AI Modal Elements
-    aiModal: document.getElementById("ai-modal"),
-    quickAiModalBtn: document.getElementById("quick-ai-modal-btn"),
-    aiModalCloseBtn: document.getElementById("ai-modal-close-btn"),
+    el.aiModal = document.getElementById("ai-modal");
+    el.quickAiModalBtn = document.getElementById("quick-ai-modal-btn");
+    el.aiModalCloseBtn = document.getElementById("ai-modal-close-btn");
     
     // Calendar Elements
-    calendarMonthYear: document.getElementById("calendar-month-year"),
-    calendarMonthTotal: document.getElementById("calendar-month-total"),
-    calendarPrevBtn: document.getElementById("calendar-prev-btn"),
-    calendarNextBtn: document.getElementById("calendar-next-btn"),
-    calendarTodayBtn: document.getElementById("calendar-today-btn"),
-    calendarDaysGrid: document.getElementById("calendar-days-grid"),
-    calStatAvg: document.getElementById("cal-stat-avg"),
-    calStatPeak: document.getElementById("cal-stat-peak"),
-    calStatDays: document.getElementById("cal-stat-days"),
-    calendarDayModal: document.getElementById("calendar-day-modal"),
-    calModalCloseBtn: document.getElementById("cal-modal-close-btn"),
-    calModalDateTitle: document.getElementById("cal-modal-date-title"),
-    calModalTotal: document.getElementById("cal-modal-total"),
-    calModalTbody: document.getElementById("cal-modal-tbody"),
+    el.calendarMonthYear = document.getElementById("calendar-month-year");
+    el.calendarMonthTotal = document.getElementById("calendar-month-total");
+    el.calendarPrevBtn = document.getElementById("calendar-prev-btn");
+    el.calendarNextBtn = document.getElementById("calendar-next-btn");
+    el.calendarTodayBtn = document.getElementById("calendar-today-btn");
+    el.calendarDaysGrid = document.getElementById("calendar-days-grid");
+    el.calStatAvg = document.getElementById("cal-stat-avg");
+    el.calStatPeak = document.getElementById("cal-stat-peak");
+    el.calStatDays = document.getElementById("cal-stat-days");
+    el.calendarDayModal = document.getElementById("calendar-day-modal");
+    el.calModalCloseBtn = document.getElementById("cal-modal-close-btn");
+    el.calModalDateTitle = document.getElementById("cal-modal-date-title");
+    el.calModalTotal = document.getElementById("cal-modal-total");
+    el.calModalTbody = document.getElementById("cal-modal-tbody");
 
     // Stories
-    storiesGrid: document.getElementById("stories-grid"),
-    storiesEmpty: document.getElementById("stories-empty"),
-    quickAddStoryBtn: document.getElementById("quick-add-story-btn"),
-    storyModal: document.getElementById("story-modal"),
-    storyModalTitle: document.getElementById("story-modal-title"),
-    storyModalCloseBtn: document.getElementById("story-modal-close-btn"),
-    storyCancelBtn: document.getElementById("story-form-cancel-btn"),
-    storyForm: document.getElementById("story-form"),
-    storyFormId: document.getElementById("story-form-id"),
-    storyFormTitle: document.getElementById("story-form-title"),
-    storyFormContent: document.getElementById("story-form-content"),
-    storyFormDate: document.getElementById("story-form-date"),
-    storyFormMood: document.getElementById("story-form-mood"),
-    storyMoodPicker: document.getElementById("story-mood-picker"),
+    el.storiesGrid = document.getElementById("stories-grid");
+    el.storiesEmpty = document.getElementById("stories-empty");
+    el.quickAddStoryBtn = document.getElementById("quick-add-story-btn");
+    el.storyModal = document.getElementById("story-modal");
+    el.storyModalTitle = document.getElementById("story-modal-title");
+    el.storyModalCloseBtn = document.getElementById("story-modal-close-btn");
+    el.storyCancelBtn = document.getElementById("story-form-cancel-btn");
+    el.storyForm = document.getElementById("story-form");
+    el.storyFormId = document.getElementById("story-form-id");
+    el.storyFormTitle = document.getElementById("story-form-title");
+    el.storyFormContent = document.getElementById("story-form-content");
+    el.storyFormDate = document.getElementById("story-form-date");
+    el.storyFormMood = document.getElementById("story-form-mood");
+    el.storyMoodPicker = document.getElementById("story-mood-picker");
 
     // Story View Modal
-    storyViewModal: document.getElementById("story-view-modal"),
-    storyViewCloseBtn: document.getElementById("story-view-close-btn"),
-    storyViewMood: document.getElementById("story-view-mood"),
-    storyViewTitle: document.getElementById("story-view-title"),
-    storyViewMeta: document.getElementById("story-view-meta"),
-    storyViewContent: document.getElementById("story-view-content"),
-    storyViewPrevBtn: document.getElementById("story-view-prev"),
-    storyViewNextBtn: document.getElementById("story-view-next")
-};
+    el.storyViewModal = document.getElementById("story-view-modal");
+    el.storyViewCloseBtn = document.getElementById("story-view-close-btn");
+    el.storyViewMood = document.getElementById("story-view-mood");
+    el.storyViewTitle = document.getElementById("story-view-title");
+    el.storyViewMeta = document.getElementById("story-view-meta");
+    el.storyViewContent = document.getElementById("story-view-content");
+    el.storyViewPrevBtn = document.getElementById("story-view-prev");
+    el.storyViewNextBtn = document.getElementById("story-view-next");
+}
 
 // Register custom Chart.js tooltip positioner to follow mouse cursor
 if (typeof Chart !== "undefined" && Chart.Tooltip && Chart.Tooltip.positioners) {
@@ -157,14 +185,15 @@ if (typeof Chart !== "undefined" && Chart.Tooltip && Chart.Tooltip.positioners) 
 }
 
 // Initialize Application
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadDedicatedPages();
+    initElementsCache();
     initKeypad();
     initTabs();
     initModal();
-    initFoodModal(); // New
-    initStoryModal(); // New
+    initFoodModal();
+    initStoryModal();
     initFilters();
-    // initPagination(); // Removed for simplicity
     initAIParser();
     initChartToggle();
     initCalendar();

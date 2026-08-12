@@ -1,0 +1,61 @@
+<div class="table-controls glass">
+    <div class="filters-group">
+        <div class="search-box">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="tx-search-input" placeholder="Search item...">
+        </div>
+        
+        <div class="select-wrapper">
+            <i data-lucide="user" class="select-icon"></i>
+            <select id="tx-filter-user">
+                <option value="">All Users</option>
+                <!-- Dynamic options -->
+            </select>
+        </div>
+
+        <div class="select-wrapper">
+            <i data-lucide="calendar" class="select-icon"></i>
+            <input type="date" id="tx-filter-date" title="Filter by date">
+        </div>
+
+        <div class="select-wrapper">
+            <i data-lucide="list" class="select-icon"></i>
+            <select id="tx-limit-select">
+                <option value="10">Show 10</option>
+                <option value="25">Show 25</option>
+                <option value="50">Show 50</option>
+                <option value="100">Show 100</option>
+                <option value="99999">Show All</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="actions-group">
+        <!-- Extra options -->
+    </div>
+</div>
+
+<div class="table-container glass mt-4">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="sortable" data-sort="item">Item <i data-lucide="chevrons-up-down"></i></th>
+                    <th class="sortable" data-sort="amount">Amount <i data-lucide="chevrons-up-down"></i></th>
+                    <th class="sortable" data-sort="category">Category <i data-lucide="chevrons-up-down"></i></th>
+                    <th class="sortable" data-sort="type">Type <i data-lucide="chevrons-up-down"></i></th>
+                    <th class="sortable" data-sort="username">User <i data-lucide="chevrons-up-down"></i></th>
+                    <th class="sortable active" data-sort="createdAt">Date <i data-lucide="chevron-down"></i></th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="all-transactions-tbody">
+                <!-- Dynamic -->
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination info -->
+    <div class="table-pagination">
+        <span id="pagination-info">Showing all data</span>
+    </div>
+</div>
