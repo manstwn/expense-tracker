@@ -26,6 +26,8 @@ const state = {
     chartMaxItems: 10, // Default to top 10 items
     calendarDate: new Date(),
     allStories: []
+};
+
 // Global Constants
 const DAY_COLOR_CLASSES = ["day-group-purple", "day-group-pink", "day-group-cyan", "day-group-amber"];
 
