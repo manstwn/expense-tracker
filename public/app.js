@@ -1622,7 +1622,10 @@ function renderAIQuickParsePreview() {
         const div = document.createElement("div");
         div.className = "preview-item";
         div.innerHTML = `
-            <span>${escapeHtml(item.item)}</span>
+            <div>
+                <span>${escapeHtml(item.item)}</span>
+                ${item.date ? `<span style="font-size: 11px; opacity: 0.7; margin-left: 6px;">📅 ${item.date}</span>` : ""}
+            </div>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <span class="tx-amount ${item.type}">Rp${formatCurrency(item.amount)}</span>
                 <span class="item-type ${item.type}">${item.type}</span>
@@ -1656,6 +1659,7 @@ async function saveAIQuickParseItems() {
                 category: item.category || "manual",
                 item: item.item,
                 amount: item.amount,
+                createdAt: item.date ? `${item.date}T12:00:00+07:00` : undefined,
                 userId: 1828479746,
                 username: "imanstwn"
             });

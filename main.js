@@ -4,7 +4,6 @@ const { connectDB } = require("./lib/database");
 const { initMoneyBot } = require("./lib/bots/moneyBot");
 const { initFoodBot } = require("./lib/bots/foodBot");
 const { initWebServer } = require("./lib/server");
-const { initMQTT } = require("./lib/mqtt");
 
 async function start() {
     try {
@@ -20,17 +19,11 @@ async function start() {
             console.log(`🌐 Web Dashboard server running at http://localhost:${port}`);
         });
 
-        // 2. Initialize MQTT
-        if (process.env.MQTT_ENABLED === "true") {
-            initMQTT(transactions);
-            console.log("✅ MQTT Enabled");
-        }
-
-        // 3. Initialize Money Bot
+        // 2. Initialize Money Bot
         initMoneyBot(transactions);
         console.log("✅ Money Bot Initialized");
 
-        // 4. Initialize Food Bot
+        // 3. Initialize Food Bot
         initFoodBot(foodLogs);
         console.log("✅ Food Bot Initialized");
 
