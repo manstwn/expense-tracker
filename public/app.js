@@ -110,6 +110,7 @@ function initElementsCache() {
     el.kpiTodayExpense = document.getElementById("kpi-today-expense");
     el.kpiMonthExpense = document.getElementById("kpi-month-expense");
     el.kpiMonthIncome = document.getElementById("kpi-month-income");
+    el.kpiMonthIncomeLabel = document.getElementById("kpi-month-income-label");
     el.kpiAvgDay = document.getElementById("kpi-avg-day");
     
     // Tables
@@ -180,7 +181,6 @@ function initElementsCache() {
     el.calendarDaysGrid = document.getElementById("calendar-days-grid");
     el.calStatAvg = document.getElementById("cal-stat-avg");
     el.calStatPeak = document.getElementById("cal-stat-peak");
-    el.calStatDays = document.getElementById("cal-stat-days");
     el.calendarDayModal = document.getElementById("calendar-day-modal");
     el.calModalCloseBtn = document.getElementById("cal-modal-close-btn");
     el.calModalDateTitle = document.getElementById("cal-modal-date-title");
@@ -963,6 +963,10 @@ async function fetchStats(force = false) {
         if (el.kpiTodayExpense) el.kpiTodayExpense.textContent = `Rp${formatCurrency(kpi.todayExpense || 0)}`;
         if (el.kpiMonthExpense) el.kpiMonthExpense.textContent = `Rp${formatCurrency(kpi.thisMonthExpense || 0)}`;
         if (el.kpiMonthIncome) el.kpiMonthIncome.textContent = `Rp${formatCurrency(kpi.thisMonthIncome || 0)}`;
+        if (el.kpiMonthIncomeLabel) {
+            const { month } = getJakartaYearMonthClient();
+            el.kpiMonthIncomeLabel.textContent = `${ID_MONTHS_FULL[month - 1]} Income`;
+        }
 
         // Calculate and update AVG Spend/Day (last 30 days)
         const totalExpense30D = dailyStats.reduce((sum, day) => sum + day.expense, 0);
@@ -2112,7 +2116,7 @@ function getRelativeTimeString(date) {
 
 const ID_MONTHS_FULL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
-function formatJakartaIndonesianDate(dateInput, includeTime = true) {
+function formatJakartaIndonesianDate(dateInput, includeTime = true, shortMonth = false) {
     if (!dateInput) return "-";
     const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
     if (Number.isNaN(d.getTime())) return "-";
@@ -2121,7 +2125,7 @@ function formatJakartaIndonesianDate(dateInput, includeTime = true) {
         timeZone: "Asia/Jakarta",
         weekday: "long",
         day: "numeric",
-        month: "long",
+        month: shortMonth ? "short" : "long",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
@@ -2144,6 +2148,7 @@ function formatTableDate(date) {
     if (isNaN(d.getTime())) return "-";
     
     const dateStr = formatJakartaIndonesianDate(d, false);
+    const shortDateStr = formatJakartaIndonesianDate(d, false, true);
     const parts = new Intl.DateTimeFormat("id-ID", {
         timeZone: "Asia/Jakarta",
         hour: "2-digit",
@@ -2158,7 +2163,10 @@ function formatTableDate(date) {
     return `
         <div class="tx-date-cell">
             <div class="tx-date-main">
-                <span class="tx-date-text">${dateStr}</span>
+                <span class="tx-date-text">
+                    <span class="tx-date-full">${dateStr}</span>
+                    <span class="tx-date-short">${shortDateStr}</span>
+                </span>
                 <span class="tx-time-badge">${timeStr}</span>
             </div>
             <div class="tx-date-relative">${relativeStr}</div>
@@ -2211,9 +2219,8 @@ function shiftCalendarMonth(delta) {
 
 async function fetchCalendar() {
     try {
-        const detail = isMobileViewport() ? "0" : "1";
         const data = await apiCall(
-            `/api/calendar?year=${state.calendarYear}&month=${state.calendarMonth}&detail=${detail}`
+            `/api/calendar?year=${state.calendarYear}&month=${state.calendarMonth}&detail=1`
         );
         state.calendarData = data;
         renderExpenseCalendar();
@@ -2251,20 +2258,19 @@ function renderExpenseCalendar() {
         }
     });
 
-    let monthlyExpenseSum = 0;
     let peakExpense = 0;
     let peakDay = null;
-    let activeDaysCount = 0;
 
     Object.keys(dayExpenseMap).forEach(dayKey => {
         const dayTotal = dayExpenseMap[dayKey].total;
-        monthlyExpenseSum += dayTotal;
-        activeDaysCount += 1;
         if (dayTotal > peakExpense) {
             peakExpense = dayTotal;
             peakDay = dayKey;
         }
     });
+
+    // monthTotal comes from the API's aggregation scoped to the selected month.
+    const monthlyExpenseSum = Number(state.calendarData.monthTotal || 0);
 
     if (el.calendarMonthTotal) {
         el.calendarMonthTotal.textContent = `Total: Rp${formatCurrency(monthlyExpenseSum)}`;
@@ -2276,7 +2282,6 @@ function renderExpenseCalendar() {
             ? `${peakDay} ${monthNames[monthIndex]} (Rp${formatCurrency(peakExpense)})`
             : "-";
     }
-    if (el.calStatDays) el.calStatDays.textContent = `${activeDaysCount} dari ${totalDaysInMonth} hari`;
 
     el.calendarDaysGrid.innerHTML = "";
 
@@ -2311,19 +2316,17 @@ function renderExpenseCalendar() {
             const badgeClass = isHigh ? "calendar-day-total-badge high-expense" : "calendar-day-total-badge";
             headerRight = `<span class="${badgeClass}">Rp${formatShortCurrency(dayData.total)}</span>`;
 
-            if (!mobile) {
-                let itemRows = "";
-                (dayData.items || []).forEach(item => {
-                    itemRows += `
-                        <div class="cal-item-row">
-                            <span class="cal-item-name" title="${escapeHtml(item.item)}">${escapeHtml(item.item)}</span>
-                            <span class="cal-item-amt">Rp${formatShortCurrency(item.amount)}</span>
-                        </div>
-                    `;
-                });
+            let itemRows = "";
+            (dayData.items || []).forEach(item => {
+                itemRows += `
+                    <div class="cal-item-row">
+                        <span class="cal-item-name" title="${escapeHtml(item.item)}">${escapeHtml(item.item)}</span>
+                        <span class="cal-item-amt"><span class="cal-item-amt-currency">Rp</span>${formatShortCurrency(item.amount)}</span>
+                    </div>
+                `;
+            });
 
-                itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
-            }
+            itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
         }
 
         const dateKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

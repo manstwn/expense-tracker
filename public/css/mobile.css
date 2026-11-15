@@ -313,6 +313,41 @@
         font-size: 9.5px;
     }
 
+    /* Stack date, time and relative age so the date column stays narrow. */
+    .tx-date-cell {
+        gap: 1px;
+        white-space: normal;
+    }
+
+    .tx-date-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
+        white-space: normal;
+    }
+
+    .tx-date-text {
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    .tx-date-full {
+        display: none;
+    }
+
+    .tx-date-short {
+        display: inline;
+    }
+
+    .tx-time-badge {
+        font-size: 10px;
+        padding: 0 4px;
+    }
+
+    .tx-date-relative {
+        font-size: 10px;
+    }
+
     .action-btn {
         width: 40px;
         height: 40px;
@@ -362,8 +397,8 @@
     }
 
     .calendar-day-cell {
-        height: 84px;
-        padding: 3px;
+        height: 140px;
+        padding: 4px;
         border-radius: 8px;
     }
 
@@ -374,6 +409,37 @@
     .calendar-day-header {
         margin-bottom: 3px;
         padding-bottom: 2px;
+    }
+
+    .calendar-day-items-list {
+        display: flex;
+        gap: 2px;
+        padding-right: 0;
+    }
+
+    .cal-item-row {
+        justify-content: center;
+        gap: 0;
+        padding: 1px 2px;
+        background: rgba(244, 63, 94, 0.12);
+        border-color: rgba(244, 63, 94, 0.25);
+    }
+
+    .cal-item-name {
+        display: none;
+    }
+
+    .cal-item-amt {
+        padding: 0;
+        background: transparent;
+        border: none;
+        font-size: 9px;
+        line-height: 1.25;
+        color: #fda4af;
+    }
+
+    .cal-item-amt-currency {
+        display: none;
     }
 
     .calendar-day-number {
@@ -530,16 +596,20 @@
     }
 
     .calendar-day-cell {
-        height: 76px;
+        height: 132px;
         padding: 2px;
     }
 
     .calendar-day-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1px;
+        flex-direction: row;
+        align-items: center;
+        gap: 2px;
         margin-bottom: 2px;
         padding-bottom: 1px;
+    }
+
+    .cal-story-wrap {
+        display: none;
     }
 
     .calendar-day-number {
