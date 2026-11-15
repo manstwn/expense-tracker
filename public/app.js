@@ -109,8 +109,8 @@ function initElementsCache() {
     // KPIs
     el.kpiTodayExpense = document.getElementById("kpi-today-expense");
     el.kpiMonthExpense = document.getElementById("kpi-month-expense");
-    el.kpiMonthIncome = document.getElementById("kpi-month-income");
-    el.kpiMonthIncomeLabel = document.getElementById("kpi-month-income-label");
+    el.kpiCurrentMonthExpense = document.getElementById("kpi-current-month-expense");
+    el.kpiCurrentMonthExpenseLabel = document.getElementById("kpi-current-month-expense-label");
     el.kpiAvgDay = document.getElementById("kpi-avg-day");
     
     // Tables
@@ -959,17 +959,20 @@ async function fetchStats(force = false) {
         const kpi = data.kpi || {};
         const dailyStats = data.dailyStats || [];
 
+        const totalExpense30D = dailyStats.reduce((sum, day) => sum + day.expense, 0);
+        const { month } = getJakartaYearMonthClient();
+
         // Update KPIs
         if (el.kpiTodayExpense) el.kpiTodayExpense.textContent = `Rp${formatCurrency(kpi.todayExpense || 0)}`;
-        if (el.kpiMonthExpense) el.kpiMonthExpense.textContent = `Rp${formatCurrency(kpi.thisMonthExpense || 0)}`;
-        if (el.kpiMonthIncome) el.kpiMonthIncome.textContent = `Rp${formatCurrency(kpi.thisMonthIncome || 0)}`;
-        if (el.kpiMonthIncomeLabel) {
-            const { month } = getJakartaYearMonthClient();
-            el.kpiMonthIncomeLabel.textContent = `${ID_MONTHS_FULL[month - 1]} Income`;
+        if (el.kpiMonthExpense) el.kpiMonthExpense.textContent = `Rp${formatCurrency(totalExpense30D)}`;
+        if (el.kpiCurrentMonthExpense) {
+            el.kpiCurrentMonthExpense.textContent = `Rp${formatCurrency(kpi.thisMonthExpense || 0)}`;
+        }
+        if (el.kpiCurrentMonthExpenseLabel) {
+            el.kpiCurrentMonthExpenseLabel.textContent = `${ID_MONTHS_FULL[month - 1]} Expenses`;
         }
 
         // Calculate and update AVG Spend/Day (last 30 days)
-        const totalExpense30D = dailyStats.reduce((sum, day) => sum + day.expense, 0);
         const dailyAvg = totalExpense30D / (dailyStats.length || 30);
         if (el.kpiAvgDay) el.kpiAvgDay.textContent = `Rp${formatCurrency(Math.round(dailyAvg))}`;
 
