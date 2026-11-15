@@ -1,0 +1,480 @@
+/* Mobile-first UX overrides. Imported last so it can safely refine layout. */
+
+.btn-label-mobile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        overscroll-behavior-y: contain;
+    }
+
+    body.modal-open {
+        overflow: hidden;
+    }
+
+    button,
+    .btn,
+    .nav-item,
+    .bottom-nav-item,
+    .action-btn {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ---------- Sticky mobile header ---------- */
+    .main-content {
+        padding: 0 14px 150px;
+        padding: 0 14px calc(150px + env(safe-area-inset-bottom));
+    }
+
+    .main-header {
+        position: sticky;
+        top: 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 -14px 16px;
+        padding: 10px 14px;
+        padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
+        background: rgba(10, 5, 27, 0.97);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-title {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .header-title h1 {
+        margin: 0;
+        font-size: 19px;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .header-title p {
+        display: none;
+    }
+
+    .header-actions {
+        flex-shrink: 0;
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Quick AI Parse is the top-right action on mobile. */
+    #quick-ai-modal-btn {
+        min-height: 40px;
+        padding: 0 13px;
+        border-radius: 999px;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(217, 70, 239, 0.24));
+        border: 1px solid rgba(139, 92, 246, 0.45);
+    }
+
+    #quick-ai-modal-btn i {
+        width: 16px;
+        height: 16px;
+    }
+
+    #quick-ai-modal-btn .btn-label {
+        display: none;
+    }
+
+    #quick-ai-modal-btn .btn-label-mobile {
+        display: inline;
+    }
+
+    /* Add Transaction becomes a thumb-friendly floating action button. */
+    #quick-add-btn {
+        position: fixed;
+        right: 16px;
+        bottom: 78px;
+        bottom: calc(78px + env(safe-area-inset-bottom));
+        z-index: 120;
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        border-radius: 50%;
+        justify-content: center;
+        box-shadow: 0 10px 24px rgba(139, 92, 246, 0.45);
+    }
+
+    #quick-add-btn i {
+        width: 24px;
+        height: 24px;
+    }
+
+    #quick-add-btn .btn-label {
+        display: none;
+    }
+
+    /* ---------- Bottom navigation ---------- */
+    .bottom-nav {
+        height: 64px;
+        height: calc(64px + env(safe-area-inset-bottom));
+        padding: 4px;
+        padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+        gap: 2px;
+        background: rgba(10, 5, 27, 0.98);
+    }
+
+    .bottom-nav-item {
+        flex: 1;
+        min-width: 0;
+        gap: 2px;
+        padding: 5px 1px;
+        border-radius: 10px;
+        font-size: 9.5px;
+    }
+
+    .bottom-nav-item i {
+        width: 19px;
+        height: 19px;
+    }
+
+    .bottom-nav-item span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ---------- Dashboard cards ---------- */
+    .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .kpi-card {
+        gap: 10px;
+        min-width: 0;
+        padding: 13px;
+        border-radius: 14px;
+    }
+
+    .kpi-icon-wrapper {
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+    }
+
+    .kpi-icon-wrapper i {
+        width: 18px;
+        height: 18px;
+    }
+
+    .kpi-content {
+        min-width: 0;
+    }
+
+    .kpi-content span {
+        margin-bottom: 2px;
+        font-size: 10.5px;
+        line-height: 1.2;
+    }
+
+    .kpi-content h3 {
+        font-size: 16px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .chart-container,
+    .table-container,
+    .table-controls,
+    .calendar-container {
+        padding: 13px;
+        border-radius: 14px;
+    }
+
+    .chart-wrapper {
+        height: 230px;
+        margin-top: 10px;
+    }
+
+    .container-header h3 {
+        font-size: 15px;
+    }
+
+    /* ---------- Tables and filters ---------- */
+    .table-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .filters-group {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .search-box,
+    .select-wrapper {
+        width: 100%;
+    }
+
+    .search-box input,
+    .select-wrapper input,
+    .select-wrapper select {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    #tab-transactions .data-table {
+        min-width: 640px;
+    }
+
+    #tab-transactions .data-table th:first-child,
+    #tab-transactions .data-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: #141028;
+    }
+
+    .data-table th {
+        padding: 8px 10px;
+        font-size: 10px;
+    }
+
+    .data-table td {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .tx-badge {
+        font-size: 9.5px;
+    }
+
+    .action-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .table-pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .pagination-actions {
+        justify-content: space-between;
+    }
+
+    .pagination-actions button {
+        flex: 1;
+        min-height: 42px;
+        justify-content: center;
+    }
+
+    /* ---------- Calendar ---------- */
+    .calendar-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .calendar-title-group {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .calendar-controls {
+        justify-content: space-between;
+    }
+
+    .btn-icon-sm {
+        width: 42px;
+        height: 42px;
+    }
+
+    .calendar-stats-bar {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .calendar-day-cell {
+        height: 84px;
+        padding: 3px;
+        border-radius: 8px;
+    }
+
+    .calendar-days-grid {
+        gap: 3px;
+    }
+
+    .calendar-day-header {
+        margin-bottom: 3px;
+        padding-bottom: 2px;
+    }
+
+    .calendar-day-number {
+        font-size: 10px;
+    }
+
+    .calendar-day-total-badge {
+        padding: 1px 3px;
+        font-size: 8px;
+    }
+
+    .cal-story-wrap {
+        max-width: 16px;
+        padding: 1px;
+    }
+
+    .calendar-weekdays {
+        gap: 2px;
+        font-size: 9px;
+    }
+
+    /* ---------- Stories ---------- */
+    .stories-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .story-card {
+        height: auto;
+        min-height: 170px;
+        max-height: none;
+        padding: 15px;
+    }
+
+    .story-card-actions .action-btn {
+        width: 38px;
+        height: 38px;
+    }
+
+    /* ---------- Bottom-sheet modals ---------- */
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-content,
+    .modal-content.modal-lg {
+        width: 100%;
+        max-width: none;
+        max-height: 92vh;
+        max-height: 92dvh;
+        overflow-y: auto;
+        padding: 18px 16px;
+        padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+        border-radius: 20px 20px 0 0;
+        animation: none;
+    }
+
+    .modal-header {
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+    }
+
+    .modal-header h3 {
+        font-size: 16px;
+    }
+
+    .modal-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="date"],
+    .form-group input[type="time"],
+    .form-group input[type="datetime-local"],
+    .form-group select,
+    .story-textarea {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .story-textarea {
+        min-height: 140px;
+    }
+
+    .form-actions {
+        position: sticky;
+        bottom: 0;
+        margin-top: 16px;
+        padding: 10px 0 2px;
+        padding: 10px 0 calc(2px + env(safe-area-inset-bottom));
+        background: rgba(20, 16, 40, 0.98);
+    }
+
+    .form-actions .btn {
+        flex: 1;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .story-view-content {
+        max-height: 42vh;
+        max-height: 42dvh;
+    }
+
+    /* ---------- Toast ---------- */
+    .toast {
+        left: 14px;
+        right: 14px;
+        bottom: 148px;
+        bottom: calc(148px + env(safe-area-inset-bottom));
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+@media (max-width: 520px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 380px) {
+    .header-title h1 {
+        font-size: 17px;
+    }
+
+    #quick-ai-modal-btn {
+        padding: 0 10px;
+    }
+
+    #quick-ai-modal-btn .btn-label-mobile {
+        font-size: 11px;
+    }
+}

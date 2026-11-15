@@ -6,28 +6,39 @@
         <h1>Money Tracker</h1>
         <p>Enter your PIN to access the dashboard</p>
     </div>
-    
-    <div class="pin-display">
-        <div class="pin-dot"></div>
-        <div class="pin-dot"></div>
-        <div class="pin-dot"></div>
-        <div class="pin-dot"></div>
-    </div>
 
-    <div id="login-error" class="error-msg">Invalid PIN. Please try again.</div>
+    <form id="login-form" class="login-form" novalidate>
+        <label class="sr-only" for="pin-input">PIN</label>
+        <input
+            id="pin-input"
+            class="pin-input"
+            type="password"
+            inputmode="numeric"
+            autocomplete="current-password"
+            maxlength="64"
+            placeholder="Enter PIN"
+            aria-describedby="login-error"
+            required
+        >
+        <button type="submit" class="btn btn-primary login-submit">
+            Log In
+        </button>
+    </form>
+
+    <div id="login-error" class="error-msg" role="alert">Invalid PIN. Please try again.</div>
 
     <div class="keypad">
-        <button class="key-btn" data-val="1">1</button>
-        <button class="key-btn" data-val="2">2</button>
-        <button class="key-btn" data-val="3">3</button>
-        <button class="key-btn" data-val="4">4</button>
-        <button class="key-btn" data-val="5">5</button>
-        <button class="key-btn" data-val="6">6</button>
-        <button class="key-btn" data-val="7">7</button>
-        <button class="key-btn" data-val="8">8</button>
-        <button class="key-btn" data-val="9">9</button>
-        <button class="key-btn secondary-btn" id="key-clear"><i data-lucide="delete"></i></button>
-        <button class="key-btn" data-val="0">0</button>
-        <button class="key-btn secondary-btn" id="key-backspace"><i data-lucide="arrow-left"></i></button>
+        <button type="button" class="key-btn" data-val="1">1</button>
+        <button type="button" class="key-btn" data-val="2">2</button>
+        <button type="button" class="key-btn" data-val="3">3</button>
+        <button type="button" class="key-btn" data-val="4">4</button>
+        <button type="button" class="key-btn" data-val="5">5</button>
+        <button type="button" class="key-btn" data-val="6">6</button>
+        <button type="button" class="key-btn" data-val="7">7</button>
+        <button type="button" class="key-btn" data-val="8">8</button>
+        <button type="button" class="key-btn" data-val="9">9</button>
+        <button type="button" class="key-btn secondary-btn" id="key-clear" aria-label="Clear PIN"><i data-lucide="delete"></i></button>
+        <button type="button" class="key-btn" data-val="0">0</button>
+        <button type="button" class="key-btn secondary-btn" id="key-backspace" aria-label="Backspace"><i data-lucide="arrow-left"></i></button>
     </div>
 </div>

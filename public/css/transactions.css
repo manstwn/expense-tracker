@@ -134,10 +134,29 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding-top: 12px;
     color: var(--text-secondary);
     font-size: 12px;
+    flex-wrap: wrap;
 }
+
+.pagination-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagination-actions button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Day grouping accents */
+.day-group-purple { box-shadow: inset 3px 0 0 #8b5cf6; }
+.day-group-pink { box-shadow: inset 3px 0 0 #ec4899; }
+.day-group-cyan { box-shadow: inset 3px 0 0 #3b82f6; }
+.day-group-amber { box-shadow: inset 3px 0 0 #f59e0b; }
 
 /* Transaction Table Amounts & Badges */
 .tx-amount {

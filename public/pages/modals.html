@@ -78,7 +78,7 @@
                     <label for="story-form-date">Tanggal</label>
                     <div class="input-icon-wrap">
                         <i data-lucide="calendar"></i>
-                        <input type="datetime-local" id="story-form-date" onclick="this.showPicker && this.showPicker()">
+                        <input type="datetime-local" id="story-form-date">
                     </div>
                 </div>
 
@@ -171,26 +171,15 @@
                         <label for="form-date-only">Date</label>
                         <div class="input-icon-wrap">
                             <i data-lucide="calendar"></i>
-                            <input type="date" id="form-date-only" required onclick="this.showPicker && this.showPicker()">
+                            <input type="date" id="form-date-only" required>
                         </div>
                     </div>
                     <div class="form-group col-6">
                         <label for="form-time-only">Time</label>
                         <div class="input-icon-wrap">
                             <i data-lucide="clock"></i>
-                            <input type="time" id="form-time-only" required onclick="this.showPicker && this.showPicker()">
+                            <input type="time" id="form-time-only" required>
                         </div>
-                    </div>
-                </div>
-
-                <div class="form-row" style="display: none;">
-                    <div class="form-group col-6">
-                        <label for="form-userid">Telegram User ID</label>
-                        <input type="number" id="form-userid" placeholder="e.g. 1828479746">
-                    </div>
-                    <div class="form-group col-6">
-                        <label for="form-username">Telegram Username</label>
-                        <input type="text" id="form-username" placeholder="e.g. imanstwn">
                     </div>
                 </div>
 
@@ -258,7 +247,7 @@
 </div>
 
 <!-- TOAST NOTIFICATION -->
-<div id="toast" class="toast glass">
+<div id="toast" class="toast glass" role="status" aria-live="polite">
     <i id="toast-icon" data-lucide="check-circle-2"></i>
     <span id="toast-message">Action completed successfully</span>
 </div>

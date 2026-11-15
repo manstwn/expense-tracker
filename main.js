@@ -1,51 +1,96 @@
-require("dotenv").config();
 const express = require("express");
-const { connectDB } = require("./lib/database");
-const { initMoneyBot } = require("./lib/bots/moneyBot");
-const { initFoodBot } = require("./lib/bots/foodBot");
+const path = require("path");
+const { spawn } = require("child_process");
+
+const { connectDB, closeDB } = require("./lib/database");
 const { initWebServer } = require("./lib/server");
+const { port, isProd, tunnelToken } = require("./lib/config");
+const logger = require("./lib/logger");
+
+let shuttingDown = false;
 
 async function start() {
-    try {
-        console.log("Starting Unified Application...");
-        const { transactions, foodLogs } = await connectDB();
-        console.log("✅ MongoDB Connected");
+    logger.info("Starting application");
 
-        // 1. Initialize Web Server
-        const app = express();
-        initWebServer(app);
-        const port = process.env.PORT || 3000;
-        app.listen(port, () => {
-            console.log(`🌐 Web Dashboard server running at http://localhost:${port}`);
+    await connectDB();
+    logger.info("MongoDB connected");
+
+    const app = express();
+    initWebServer(app);
+
+    const server = app.listen(port, () => {
+        logger.info("Web dashboard listening", { port });
+    });
+
+    server.on("error", (err) => {
+        logger.error("HTTP server failed", { error: err.message });
+        process.exit(1);
+    });
+
+    let tunnel = null;
+    if (isProd && tunnelToken) {
+        const binary = path.join(
+            __dirname,
+            "node_modules",
+            "cloudflared",
+            "bin",
+            `cloudflared${process.platform === "win32" ? ".exe" : ""}`
+        );
+
+        logger.info("Starting Cloudflare Tunnel");
+        tunnel = spawn(binary, ["tunnel", "run", "--token", tunnelToken]);
+
+        tunnel.stdout.on("data", (data) => logger.info("cloudflared", { output: String(data).trim() }));
+        tunnel.stderr.on("data", (data) => logger.warn("cloudflared", { output: String(data).trim() }));
+
+        tunnel.on("error", (err) => {
+            logger.error("Failed to start Cloudflare Tunnel", { error: err.message });
+            process.exit(1);
         });
 
-        // 2. Initialize Money Bot
-        initMoneyBot(transactions);
-        console.log("✅ Money Bot Initialized");
-
-        // 3. Initialize Food Bot
-        initFoodBot(foodLogs);
-        console.log("✅ Food Bot Initialized");
-
-        // 5. Cloudflare Tunnel
-        if (process.env.ENV === "prod" && process.env.CL_TUNNEL_TOKEN) {
-            const { spawn } = require("child_process");
-            const path = require("path");
-            console.log("🚀 Starting Cloudflare Tunnel...");
-            
-            const cloudflaredBin = path.join(__dirname, "node_modules", "cloudflared", "bin", "cloudflared" + (process.platform === "win32" ? ".exe" : ""));
-            const tunnel = spawn(cloudflaredBin, ["tunnel", "run", "--token", process.env.CL_TUNNEL_TOKEN]);
-            
-            tunnel.stdout.on("data", (data) => console.log(`[CF Tunnel]: ${data}`));
-            tunnel.stderr.on("data", (data) => console.error(`[CF Tunnel]: ${data}`));
-        }
-
-        console.log("🚀 All services are running");
-    } catch (err) {
-        console.error("❌ Startup Failed:");
-        console.error(err);
-        process.exit(1);
+        tunnel.on("exit", (code, signal) => {
+            if (shuttingDown) return;
+            logger.error("Cloudflare Tunnel exited", { code, signal });
+            process.exit(code === 0 ? 1 : code || 1);
+        });
     }
+
+    async function shutdown(signal) {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        logger.info("Shutting down", { signal });
+
+        if (tunnel) tunnel.kill();
+
+        const forceExit = setTimeout(() => {
+            logger.error("Shutdown timed out");
+            process.exit(1);
+        }, 10000);
+        forceExit.unref();
+
+        server.close(async () => {
+            try {
+                await closeDB();
+            } catch (err) {
+                logger.error("Failed to close MongoDB", { error: err.message });
+            }
+            clearTimeout(forceExit);
+            process.exit(0);
+        });
+    }
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+    logger.info("All services are running");
 }
 
-start();
+start().catch(async (err) => {
+    logger.error("Startup failed", { error: err.message, stack: err.stack });
+    try {
+        await closeDB();
+    } catch {
+        // Ignore cleanup errors during startup failure.
+    }
+    process.exit(1);
+});

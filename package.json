@@ -1,24 +1,39 @@
 {
-  "name": "money",
+  "name": "expense-tracker",
   "version": "1.0.0",
-  "description": "",
+  "description": "Personal finance dashboard with AI transaction parsing, food logs, and a diary",
   "main": "main.js",
+  "private": true,
   "scripts": {
     "start": "node main.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "migrate:owner": "node scripts/normalize-owner.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Expense Tracker contributors",
+  "license": "MIT",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "dependencies": {
-    "@google/genai": "^1.51.0",
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.16.0",
     "cloudflared": "^0.7.1",
+    "compression": "^1.8.2",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongodb": "^7.2.0",
-    "node-telegram-bot-api": "^0.67.0"
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "mongodb": "^7.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "supertest": "^7.3.2"
   }
 }

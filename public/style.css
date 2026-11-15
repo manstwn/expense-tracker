@@ -1,13 +1,13 @@
 /* Master CSS Entry Point importing dedicated page & component stylesheets */
-@import url('css/variables.css');
-@import url('css/layout.css');
-@import url('css/login.css');
-@import url('css/overview.css');
-@import url('css/transactions.css');
-@import url('css/food.css');
-@import url('css/insights.css');
-@import url('css/stories.css');
-@import url('css/modals.css');
+@import url('css/variables.css?v=2.4.0');
+@import url('css/layout.css?v=2.4.0');
+@import url('css/login.css?v=2.4.0');
+@import url('css/overview.css?v=2.4.0');
+@import url('css/transactions.css?v=2.4.0');
+@import url('css/food.css?v=2.4.0');
+@import url('css/insights.css?v=2.4.0');
+@import url('css/stories.css?v=2.4.0');
+@import url('css/modals.css?v=2.4.0');
 
 /* Master Responsive Overrides */
 @media (max-width: 1024px) {
@@ -22,6 +22,15 @@
 @media (max-width: 768px) {
     .sidebar {
         display: none;
+    }
+
+    .calendar-container,
+    .story-card {
+        box-shadow: none;
+    }
+
+    .calendar-container {
+        background: rgba(20, 16, 40, 0.94);
     }
     .main-content {
         margin-left: 0;
@@ -45,8 +54,8 @@
         gap: 4px;
     }
     .calendar-day-cell {
-        height: 120px;
-        padding: 5px;
+        height: 92px;
+        padding: 4px;
     }
     .calendar-day-number {
         font-size: 11px;

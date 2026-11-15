@@ -1,35 +1,65 @@
 // Global App State
 const state = {
-    pin: [],
-    token: localStorage.getItem("session_token") || null,
     currentTab: "overview",
     stats: null,
-    users: [],
+    statsFetchedAt: 0,
+    statsRequestId: 0,
+    transactionsRequestId: 0,
     transactions: [],
-    allTransactions: [],
-    totalTransactions: 0,
+    transactionsTotal: 0,
+    transactionsTotalPages: 0,
+    recentTransactions: [],
+    topExpenses: [],
+    dayTransactions: [],
+    calendarData: { days: [], stories: {}, monthTotal: 0 },
+    calendarYear: new Date().getFullYear(),
+    calendarMonth: new Date().getMonth() + 1,
+    allStories: [],
+    storiesPage: 1,
+    storiesTotalPages: 0,
+    foodPage: 1,
+    foodTotalPages: 0,
     filters: {
         search: "",
-        userId: "",
         date: "",
         sortBy: "createdAt",
         sortOrder: -1,
         limit: 10,
-        skip: 0
+        page: 1
     },
     charts: {
         trend: null,
-        category: null
+        trendKey: null,
+        category: null,
+        categoryKey: null
     },
     tempParsedItems: [], // Store temporary items returned from AI Quick Parse
     chartMode: "day", // "day" or "item"
-    chartMaxItems: 10, // Default to top 10 items
-    calendarDate: new Date(),
-    allStories: []
+    chartMaxItems: 10 // Default to top 10 items
 };
 
 // Global Constants
 const DAY_COLOR_CLASSES = ["day-group-purple", "day-group-pink", "day-group-cyan", "day-group-amber"];
+const TAB_TITLES = {
+    overview: "Financial Overview",
+    transactions: "Transactions",
+    food: "Food Tracker",
+    insights: "Insights",
+    stories: "Stories"
+};
+
+// Calendar state is initialized from the Jakarta date, not the browser's local date.
+const initialJakartaToday = toJakartaDateStrClient(new Date());
+state.calendarYear = Number(initialJakartaToday.slice(0, 4));
+state.calendarMonth = Number(initialJakartaToday.slice(5, 7));
+
+function isMobileViewport() {
+    return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 // Elements object container
 const el = {};
@@ -45,25 +75,29 @@ async function loadDedicatedPages() {
         { id: "modals-container", file: "pages/modals.html" }
     ];
 
-    await Promise.all(pageMap.map(async item => {
+    const results = await Promise.allSettled(pageMap.map(async item => {
         const container = document.getElementById(item.id);
-        if (container) {
-            try {
-                const res = await fetch(item.file);
-                if (res.ok) {
-                    container.innerHTML = await res.text();
-                }
-            } catch (err) {
-                console.error(`Failed to load ${item.file}:`, err);
-            }
-        }
+        if (!container) return;
+        const res = await fetch(item.file);
+        if (!res.ok) throw new Error(`${item.file}: HTTP ${res.status}`);
+        container.innerHTML = await res.text();
     }));
+
+    const failed = results.filter(result => result.status === "rejected");
+    if (failed.length > 0) {
+        failed.forEach(result => console.error("Failed to load dashboard section:", result.reason));
+        const banner = document.createElement("div");
+        banner.className = "load-error-banner";
+        banner.textContent = "Some dashboard sections failed to load. Reload the page to try again.";
+        document.body.prepend(banner);
+    }
 }
 
 function initElementsCache() {
     el.loginScreen = document.getElementById("login-screen");
     el.dashboardScreen = document.getElementById("dashboard-screen");
-    el.pinDots = document.querySelectorAll(".pin-dot");
+    el.pinInput = document.getElementById("pin-input");
+    el.loginForm = document.getElementById("login-form");
     el.loginError = document.getElementById("login-error");
     el.loginContainer = document.querySelector(".login-container");
     
@@ -85,13 +119,21 @@ function initElementsCache() {
     
     // Filters & Pagination
     el.txSearch = document.getElementById("tx-search-input");
-    el.txFilterUser = document.getElementById("tx-filter-user");
     el.txFilterDate = document.getElementById("tx-filter-date");
     el.txLimitSelect = document.getElementById("tx-limit-select");
     el.sortHeaders = document.querySelectorAll("th.sortable");
     el.paginationInfo = document.getElementById("pagination-info");
     el.paginationPrev = document.getElementById("pagination-prev");
     el.paginationNext = document.getElementById("pagination-next");
+
+    // Food pagination
+    el.foodPaginationInfo = document.getElementById("food-pagination-info");
+    el.foodPrev = document.getElementById("food-prev");
+    el.foodNext = document.getElementById("food-next");
+
+    // Stories pagination
+    el.storiesInfo = document.getElementById("stories-info");
+    el.storiesLoadMore = document.getElementById("stories-load-more");
     
     // AI quick add
     el.aiInput = document.getElementById("ai-input-text");
@@ -112,8 +154,6 @@ function initElementsCache() {
     el.formAmount = document.getElementById("form-amount");
     el.formDateOnly = document.getElementById("form-date-only");
     el.formTimeOnly = document.getElementById("form-time-only");
-    el.formUserId = document.getElementById("form-userid");
-    el.formUsername = document.getElementById("form-username");
     
     // Toast
     el.toast = document.getElementById("toast");
@@ -172,7 +212,6 @@ function initElementsCache() {
     el.storyViewMeta = document.getElementById("story-view-meta");
     el.storyViewContent = document.getElementById("story-view-content");
     el.storyViewAiContent = document.getElementById("story-view-ai-content");
-    el.storyViewAiPane = document.getElementById("story-view-ai-pane");
     el.storyViewPrevBtn = document.getElementById("story-view-prev");
     el.storyViewNextBtn = document.getElementById("story-view-next");
 }
@@ -200,17 +239,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     initFoodModal();
     initStoryModal();
     initFilters();
+    initPagination();
+    initFoodPagination();
+    initStoriesPagination();
     initAIParser();
     initChartToggle();
     initCalendar();
+    initModalAccessibility();
     createIconsSafe();
-    
-    // Auto-login check
-    if (state.token) {
-        verifySession();
-    } else {
-        showScreen("login");
-    }
+
+    // The session lives in an HttpOnly cookie, so always ask the server.
+    verifySession();
 });
 
 function initFoodModal() {
@@ -220,23 +259,26 @@ function initFoodModal() {
     const foodCancelBtn = document.getElementById("food-form-cancel-btn");
     const foodForm = document.getElementById("food-form");
 
+    if (!foodModal) return;
+
     if (addFoodBtn) addFoodBtn.addEventListener("click", () => foodModal.classList.add("active"));
     if (foodCloseBtn) foodCloseBtn.addEventListener("click", () => foodModal.classList.remove("active"));
     if (foodCancelBtn) foodCancelBtn.addEventListener("click", () => foodModal.classList.remove("active"));
-    
+    if (!foodForm) return;
+
     foodForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const foodName = document.getElementById("food-form-name").value;
         const category = document.getElementById("food-form-category").value;
-        
+
         try {
             await apiCall("/api/food/logs", "POST", { foodName, category });
             showToast("Food logged successfully", "success");
             foodModal.classList.remove("active");
             foodForm.reset();
-            fetchFoodLogs();
+            fetchFoodLogs(1);
         } catch (err) {
-            showToast("Failed to log food", "error");
+            showToast(err.message || "Failed to log food", "error");
         }
     });
 }
@@ -250,6 +292,8 @@ function initStoryModal() {
     const storyCloseBtn = el.storyModalCloseBtn;
     const storyCancelBtn = el.storyCancelBtn;
     const storyForm = el.storyForm;
+
+    if (!storyForm || !storyModal) return;
 
     if (addStoryBtn) addStoryBtn.addEventListener("click", () => openStoryModal());
     if (storyCloseBtn) storyCloseBtn.addEventListener("click", () => storyModal.classList.remove("active"));
@@ -326,25 +370,38 @@ function initStoryModal() {
     storyForm.addEventListener("submit", handleStoryFormSubmit);
 }
 
-async function fetchStories() {
+async function fetchStories(page = 1, append = false) {
     try {
-        const data = await apiCall("/api/stories");
-        state.allStories = data.stories || [];
+        const data = await apiCall(`/api/stories?page=${page}&pageSize=24`);
+        state.storiesPage = data.page;
+        state.storiesTotalPages = data.totalPages;
+        state.allStories = append
+            ? [...state.allStories, ...(data.stories || [])]
+            : (data.stories || []);
         renderStoriesList(state.allStories);
+        updateStoriesPagination(data);
     } catch (err) {
         console.error("Failed to fetch stories:", err);
-        showToast("Failed to fetch stories", "error");
+        showToast(err.message || "Failed to fetch stories", "error");
     }
 }
 
-async function loadStoriesData() {
-    try {
-        const data = await apiCall("/api/stories");
-        state.allStories = data.stories || [];
-    } catch (err) {
-        console.error("Failed to load stories data:", err);
-        state.allStories = state.allStories || [];
+function updateStoriesPagination(data) {
+    if (el.storiesInfo) {
+        el.storiesInfo.textContent = data.total
+            ? `Showing ${state.allStories.length} of ${data.total} stories`
+            : "";
     }
+    if (el.storiesLoadMore) {
+        el.storiesLoadMore.style.display = state.storiesPage < data.totalPages ? "inline-flex" : "none";
+    }
+}
+
+function initStoriesPagination() {
+    if (!el.storiesLoadMore) return;
+    el.storiesLoadMore.addEventListener("click", () => {
+        fetchStories(state.storiesPage + 1, true);
+    });
 }
 
 function renderStoriesList(stories) {
@@ -355,15 +412,21 @@ function renderStoriesList(stories) {
     el.storiesGrid.innerHTML = "";
     if (stories.length === 0) return;
 
+    const fragment = document.createDocumentFragment();
+
     stories.forEach(story => {
         const d = new Date(story.createdAt);
-        const dateStr = formatLocalIndonesianDate(d, false);
-        const timeStr = new Intl.DateTimeFormat("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
-        }).format(d);
-        const tzLabel = getLocalTimeZoneLabel();
+        const validDate = !Number.isNaN(d.getTime());
+        const dateStr = validDate ? formatJakartaIndonesianDate(d, false) : "-";
+        const timeStr = validDate
+            ? new Intl.DateTimeFormat("id-ID", {
+                timeZone: "Asia/Jakarta",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }).format(d)
+            : "";
+        const tzLabel = validDate ? "WIB" : "";
         const relativeStr = getRelativeTimeString(story.createdAt);
         const mood = story.mood || "😐";
         const title = story.title || "Untitled Story";
@@ -372,11 +435,11 @@ function renderStoriesList(stories) {
         card.className = "story-card glass";
         card.innerHTML = `
             <div class="story-card-header">
-                <span class="story-mood-badge" title="Mood">${mood}</span>
+                <span class="story-mood-badge" title="Mood">${escapeHtml(mood)}</span>
                 <div class="story-card-actions">
-                    <button class="action-btn view" data-id="${story._id}" title="Read"><i data-lucide="eye"></i></button>
-                    <button class="action-btn edit" data-id="${story._id}" title="Edit"><i data-lucide="edit-3"></i></button>
-                    <button class="action-btn delete" data-id="${story._id}" title="Delete"><i data-lucide="trash-2"></i></button>
+                    <button class="action-btn view" data-id="${story._id}" title="Read" aria-label="Read story"><i data-lucide="eye"></i></button>
+                    <button class="action-btn edit" data-id="${story._id}" title="Edit" aria-label="Edit story"><i data-lucide="edit-3"></i></button>
+                    <button class="action-btn delete" data-id="${story._id}" title="Delete" aria-label="Delete story"><i data-lucide="trash-2"></i></button>
                 </div>
             </div>
             <h3 class="story-card-title">${escapeHtml(title)}</h3>
@@ -389,11 +452,11 @@ function renderStoriesList(stories) {
 
         card.addEventListener("click", (e) => {
             if (e.target.closest(".action-btn")) return;
-            openStoryView(story);
+            openStoryView(story, state.allStories);
         });
         card.querySelector(".view").addEventListener("click", (e) => {
             e.stopPropagation();
-            openStoryView(story);
+            openStoryView(story, state.allStories);
         });
         card.querySelector(".edit").addEventListener("click", (e) => {
             e.stopPropagation();
@@ -404,9 +467,10 @@ function renderStoriesList(stories) {
             deleteStory(story._id);
         });
 
-        el.storiesGrid.appendChild(card);
+        fragment.appendChild(card);
     });
 
+    el.storiesGrid.appendChild(fragment);
     createIconsSafe();
 }
 
@@ -417,8 +481,8 @@ function openStoryModal(story) {
     el.storyForm.reset();
     el.storyFormId.value = "";
     el.storyFormMood.value = "";
-    el.storyMoodPicker.querySelectorAll(".mood-btn").forEach((b, i) => {
-        b.classList.toggle("active", b.dataset.mood === "");
+    el.storyMoodPicker.querySelectorAll(".mood-btn").forEach((button) => {
+        button.classList.toggle("active", button.dataset.mood === "");
     });
 
     if (story) {
@@ -464,9 +528,13 @@ async function handleStoryFormSubmit(e) {
     const body = { title, content, aiContent, mood };
 
     if (dateVal) {
-        // datetime-local value = user's wall clock in their own timezone
-        // Convert to the absolute UTC instant (international time), like transactions do.
-        body.createdAt = new Date(dateVal).toISOString();
+        // Story dates are entered and displayed in Jakarta time, like transactions.
+        const createdAt = new Date(`${dateVal}:00+07:00`);
+        if (Number.isNaN(createdAt.getTime())) {
+            showToast("Invalid story date", "error");
+            return;
+        }
+        body.createdAt = createdAt.toISOString();
     }
 
     try {
@@ -478,7 +546,8 @@ async function handleStoryFormSubmit(e) {
             showToast("Story saved successfully", "success");
         }
         el.storyModal.classList.remove("active");
-        fetchStories();
+        fetchStories(1);
+        fetchCalendar();
     } catch (err) {
         showToast(err.message || "Failed to save story", "error");
     }
@@ -515,13 +584,17 @@ function changeStoryView(dir) {
 function renderStoryView(idx) {
     const story = storyViewQueue[idx] || {};
     const d = new Date(story.createdAt);
-    const dateStr = formatLocalIndonesianDate(d, false);
-    const timeStr = new Intl.DateTimeFormat("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-    }).format(d);
-    const tzLabel = getLocalTimeZoneLabel();
+    const validDate = !Number.isNaN(d.getTime());
+    const dateStr = validDate ? formatJakartaIndonesianDate(d, false) : "-";
+    const timeStr = validDate
+        ? new Intl.DateTimeFormat("id-ID", {
+            timeZone: "Asia/Jakarta",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).format(d)
+        : "";
+    const tzLabel = validDate ? "WIB" : "";
 
     const mood = story.mood || "😐";
     const title = story.title || "Untitled Story";
@@ -550,9 +623,10 @@ async function deleteStory(id) {
     try {
         await apiCall(`/api/stories/${id}`, "DELETE");
         showToast("Story deleted successfully", "success");
-        fetchStories();
+        fetchStories(1);
+        fetchCalendar();
     } catch (err) {
-        showToast("Failed to delete story", "error");
+        showToast(err.message || "Failed to delete story", "error");
     }
 }
 
@@ -570,62 +644,87 @@ function showScreen(screen) {
 }
 
 // REST API Helper
-async function apiCall(endpoint, method = "GET", body = null) {
+async function apiCall(endpoint, method = "GET", body = null, options = {}) {
     const headers = {
         "Content-Type": "application/json"
     };
-    if (state.token) {
-        headers["Authorization"] = `Bearer ${state.token}`;
-    }
-    
-    const config = { method, headers };
-    if (body) {
-        config.body = JSON.stringify(body);
-    }
-    
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
-        const response = await fetch(endpoint, config);
-        if (response.status === 401) {
-            // Invalid session or logged out
-            logout();
-            throw new Error("Unauthorized");
+        const response = await fetch(endpoint, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+            credentials: "same-origin",
+            signal: controller.signal
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        const data = contentType.includes("application/json")
+            ? await response.json()
+            : { error: await response.text() };
+
+        if (response.status === 401 && !options.skipAuthRedirect) {
+            handleUnauthorized();
+            throw new Error("Session expired");
         }
-        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error(data.error || "Something went wrong");
+            throw new Error(data.error || `Request failed (${response.status})`);
         }
+
         return data;
     } catch (err) {
-        console.error(`API Call failed (${endpoint}):`, err.message);
+        if (err.name === "AbortError") {
+            throw new Error("Request timed out");
+        }
+        console.error(`API call failed (${endpoint}):`, err.message);
         throw err;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function handleUnauthorized(showMessage = false) {
+    state.stats = null;
+    state.statsFetchedAt = 0;
+    showScreen("login");
+    if (showMessage) {
+        showToast("Session expired. Please log in again.", "error");
     }
 }
 
 // Session Validation
 async function verifySession() {
     try {
-        await apiCall("/api/verify");
+        await apiCall("/api/verify", "GET", null, { skipAuthRedirect: true });
         showScreen("dashboard");
-    } catch (err) {
-        logout();
+    } catch {
+        handleUnauthorized(false);
     }
 }
 
 // Load Dashboard Data
-async function loadDashboardData() {
-    fetchStats();
-    fetchUsers();
-    await Promise.all([fetchTransactions(), loadStoriesData()]); // Wait for data before deriving views
-    renderCurrentDayFromState(); // Filter today's transactions from state
-    renderTopExpensesFromState(); // Sort top expenses from state
-    renderExpenseCalendar(); // Render Calendar View with expenses
+async function loadDashboardData(force = false) {
+    await Promise.allSettled([
+        fetchStats(force),
+        fetchRecentTransactions(),
+        fetchDayTransactions(getTodayDateStr()),
+        fetchTopExpenses(),
+        fetchCalendar()
+    ]);
 }
 
 // Logout
-function logout() {
-    state.token = null;
-    localStorage.removeItem("session_token");
-    showScreen("login");
+async function logout() {
+    try {
+        await apiCall("/api/logout", "POST", null, { skipAuthRedirect: true });
+    } catch {
+        // The local session is cleared regardless of the server response.
+    }
+    handleUnauthorized(false);
     showToast("Logged out successfully", "success");
 }
 
@@ -633,78 +732,69 @@ function logout() {
 // PIN KEYPAD LOGIN SYSTEM
 // ======================================================
 function initKeypad() {
+    if (!el.pinInput) return;
+
     const keys = document.querySelectorAll(".key-btn[data-val]");
     keys.forEach(key => {
         key.addEventListener("click", () => {
-            if (state.pin.length < 4) {
-                state.pin.push(key.dataset.val);
-                updatePinDisplay();
-                if (state.pin.length === 4) {
-                    submitLogin();
-                }
+            if (el.pinInput.value.length < Number(el.pinInput.maxLength)) {
+                el.pinInput.value += key.dataset.val;
+                el.pinInput.focus();
+                el.loginError.classList.remove("visible");
             }
         });
     });
-    
-    document.getElementById("key-clear").addEventListener("click", resetPin);
-    document.getElementById("key-backspace").addEventListener("click", () => {
-        state.pin.pop();
-        updatePinDisplay();
-    });
-    
-    // Keyboard listener support
-    document.addEventListener("keydown", (e) => {
-        if (!el.loginScreen.classList.contains("active")) return;
-        
-        if (e.key >= "0" && e.key <= "9") {
-            if (state.pin.length < 4) {
-                state.pin.push(e.key);
-                updatePinDisplay();
-                if (state.pin.length === 4) {
-                    submitLogin();
-                }
-            }
-        } else if (e.key === "Backspace") {
-            state.pin.pop();
-            updatePinDisplay();
-        } else if (e.key === "Escape") {
-            resetPin();
-        }
-    });
-}
 
-function updatePinDisplay() {
-    el.pinDots.forEach((dot, idx) => {
-        if (idx < state.pin.length) {
-            dot.classList.add("filled");
-        } else {
-            dot.classList.remove("filled");
-        }
+    const clearButton = document.getElementById("key-clear");
+    const backspaceButton = document.getElementById("key-backspace");
+    if (clearButton) clearButton.addEventListener("click", resetPin);
+    if (backspaceButton) {
+        backspaceButton.addEventListener("click", () => {
+            el.pinInput.value = el.pinInput.value.slice(0, -1);
+            el.pinInput.focus();
+            el.loginError.classList.remove("visible");
+        });
+    }
+
+    el.pinInput.addEventListener("input", () => el.loginError.classList.remove("visible"));
+    el.pinInput.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") resetPin();
     });
-    el.loginError.classList.remove("visible");
+
+    if (el.loginForm) {
+        el.loginForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            submitLogin();
+        });
+    }
 }
 
 function resetPin() {
-    state.pin = [];
-    updatePinDisplay();
+    if (el.pinInput) el.pinInput.value = "";
+    if (el.loginError) el.loginError.classList.remove("visible");
 }
 
 async function submitLogin() {
-    const enteredPin = state.pin.join("");
+    const enteredPin = el.pinInput ? el.pinInput.value : "";
+    if (!enteredPin) {
+        el.loginError.classList.add("visible");
+        return;
+    }
+
+    const submitButton = el.loginForm?.querySelector("button[type='submit']");
+    if (submitButton) submitButton.disabled = true;
+
     try {
-        const response = await apiCall("/api/login", "POST", { pin: enteredPin });
-        if (response.success && response.token) {
-            state.token = response.token;
-            localStorage.setItem("session_token", response.token);
-            showToast("Login successful", "success");
-            showScreen("dashboard");
-        }
-    } catch (err) {
-        // Shake feedback animation
+        await apiCall("/api/login", "POST", { pin: enteredPin }, { skipAuthRedirect: true });
+        showToast("Login successful", "success");
+        showScreen("dashboard");
+    } catch {
         el.loginContainer.classList.add("shake");
         el.loginError.classList.add("visible");
         resetPin();
         setTimeout(() => el.loginContainer.classList.remove("shake"), 500);
+    } finally {
+        if (submitButton) submitButton.disabled = false;
     }
 }
 
@@ -728,11 +818,19 @@ function initTabs() {
     if (mobileLogout) {
         mobileLogout.addEventListener("click", logout);
     }
+
+    const viewAllTransactions = document.getElementById("view-all-transactions-btn");
+    if (viewAllTransactions) {
+        viewAllTransactions.addEventListener("click", () => switchTab("transactions"));
+    }
 }
 
 function switchTab(tab) {
     state.currentTab = tab;
-    
+
+    const titleEl = document.getElementById("welcome-message");
+    if (titleEl) titleEl.textContent = TAB_TITLES[tab] || "Money Tracker";
+
     const allNavs = document.querySelectorAll(".nav-item, .bottom-nav-item");
     allNavs.forEach(item => {
         if (item.dataset.tab === tab) {
@@ -752,105 +850,153 @@ function switchTab(tab) {
     
     // Reload components if needed
     if (tab === "transactions") {
-        fetchTransactions();
+        fetchTransactionsPage(state.filters.page);
     } else if (tab === "overview") {
-        fetchStats();
-        loadStoriesData().then(() => renderExpenseCalendar());
-        // Re-render overview derived views from cached state
-        renderRecentTransactionsMiniTable(state.allTransactions.slice(0, 10));
-        renderCurrentDayFromState();
-        renderTopExpensesFromState();
+        loadDashboardData();
     } else if (tab === "insights") {
         fetchStats();
     } else if (tab === "food") {
-        fetchFoodLogs();
+        fetchFoodLogs(1);
     } else if (tab === "stories") {
-        fetchStories();
+        fetchStories(1);
     }
 }
 
 // ======================================================
 // FOOD LOGS FETCH & VIEW
 // ======================================================
-async function fetchFoodLogs() {
-    console.log("Fetching food logs...");
+async function fetchFoodLogs(page = 1) {
     try {
-        const logs = await apiCall("/api/food/logs");
-        console.log("Fetched food logs:", logs);
-        renderFoodLogsTable(logs);
+        const data = await apiCall(`/api/food/logs?page=${page}&pageSize=25`);
+        state.foodPage = data.page;
+        state.foodTotalPages = data.totalPages;
+        renderFoodLogsTable(data.logs || []);
+        updateFoodPagination(data);
     } catch (err) {
         console.error("Failed to fetch food logs:", err);
-        showToast("Failed to fetch food logs", "error");
+        showToast(err.message || "Failed to fetch food logs", "error");
+    }
+}
+
+function updateFoodPagination(data) {
+    if (el.foodPaginationInfo) {
+        el.foodPaginationInfo.textContent = data.total
+            ? `Page ${data.page} of ${data.totalPages} (${data.total} logs)`
+            : "No logs";
+    }
+    if (el.foodPrev) el.foodPrev.disabled = data.page <= 1;
+    if (el.foodNext) el.foodNext.disabled = data.page >= data.totalPages;
+}
+
+function initFoodPagination() {
+    if (el.foodPrev) {
+        el.foodPrev.addEventListener("click", () => {
+            if (state.foodPage > 1) fetchFoodLogs(state.foodPage - 1);
+        });
+    }
+    if (el.foodNext) {
+        el.foodNext.addEventListener("click", () => {
+            if (state.foodPage < state.foodTotalPages) fetchFoodLogs(state.foodPage + 1);
+        });
     }
 }
 
 function renderFoodLogsTable(logs) {
     const tbody = document.getElementById("food-logs-tbody");
-    if (!tbody) {
-        console.error("food-logs-tbody element not found");
-        return;
-    }
-    
+    if (!tbody) return;
+
     tbody.innerHTML = "";
     if (logs.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary)">No food logs found</td></tr>`;
         return;
     }
-    
+
+    const fragment = document.createDocumentFragment();
+
     logs.forEach(log => {
         const d = new Date(log.createdAt);
-        const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-        
+        const dateStr = Number.isNaN(d.getTime())
+            ? "-"
+            : d.toLocaleString("id-ID", {
+                timeZone: "Asia/Jakarta",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            });
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${escapeHtml(log.foodName)}</strong></td>
             <td><span class="tx-badge">${escapeHtml(log.category)}</span></td>
             <td>${dateStr}</td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    tbody.appendChild(fragment);
 }
 
 // ======================================================
 // STATS AND CHART CALCULATIONS
 // ======================================================
-async function fetchStats() {
+async function fetchStats(force = false) {
+    if (!force && state.stats && Date.now() - state.statsFetchedAt < 30000) {
+        return;
+    }
+
+    const requestId = ++state.statsRequestId;
+
     try {
         const data = await apiCall("/api/stats");
+        if (requestId !== state.statsRequestId) return;
+
         state.stats = data;
-        
+        state.statsFetchedAt = Date.now();
+
+        const kpi = data.kpi || {};
+        const dailyStats = data.dailyStats || [];
+
         // Update KPIs
-        el.kpiTodayExpense.textContent = `Rp${formatCurrency(data.kpi.todayExpense)}`;
-        el.kpiMonthExpense.textContent = `Rp${formatCurrency(data.kpi.thisMonthExpense)}`;
-        el.kpiMonthIncome.textContent = `Rp${formatCurrency(data.kpi.thisMonthIncome)}`;
-        
+        if (el.kpiTodayExpense) el.kpiTodayExpense.textContent = `Rp${formatCurrency(kpi.todayExpense || 0)}`;
+        if (el.kpiMonthExpense) el.kpiMonthExpense.textContent = `Rp${formatCurrency(kpi.thisMonthExpense || 0)}`;
+        if (el.kpiMonthIncome) el.kpiMonthIncome.textContent = `Rp${formatCurrency(kpi.thisMonthIncome || 0)}`;
+
         // Calculate and update AVG Spend/Day (last 30 days)
-        const totalExpense30D = data.dailyStats.reduce((sum, d) => sum + d.expense, 0);
-        const dailyAvg = totalExpense30D / (data.dailyStats.length || 30);
-        el.kpiAvgDay.textContent = `Rp${formatCurrency(Math.round(dailyAvg))}`;
-        
+        const totalExpense30D = dailyStats.reduce((sum, day) => sum + day.expense, 0);
+        const dailyAvg = totalExpense30D / (dailyStats.length || 30);
+        if (el.kpiAvgDay) el.kpiAvgDay.textContent = `Rp${formatCurrency(Math.round(dailyAvg))}`;
+
         // Render 30 Days Trend Line / Bar Chart
         if (state.chartMode === "item") {
             renderTrendChart(data.itemStats || []);
         } else {
-            renderTrendChart(data.dailyStats || []);
+            renderTrendChart(dailyStats);
         }
-        
+
         // Render Category spend donut
-        renderCategoryBreakdown(data.categoryStats);
+        renderCategoryBreakdown(data.categoryStats || []);
     } catch (err) {
-        showToast("Failed to fetch dashboard statistics", "error");
+        showToast(err.message || "Failed to fetch dashboard statistics", "error");
     }
 }
 
 function renderTrendChart(chartData) {
-    const ctx = document.getElementById("trend-chart").getContext("2d");
-    
-    // Slice data if grouping by item to prevent overcrowding
+    const canvas = document.getElementById("trend-chart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const mobile = isMobileViewport();
+    const reduceMotion = prefersReducedMotion();
+
+    // Ranking mode: sort by amount first, then keep the displayed sample chronological.
     let displayData = [...chartData];
     if (state.chartMode === "item") {
-        displayData = displayData.slice(0, state.chartMaxItems);
-        displayData.reverse(); // Show oldest first (left-to-right) so the most recent is on the far right
+        displayData = displayData
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, state.chartMaxItems)
+            .reverse();
     } else {
         // Sort chronologically for daily trend
         displayData.sort((a, b) => a.date.localeCompare(b.date));
@@ -865,11 +1011,20 @@ function renderTrendChart(chartData) {
     });
     
     const datasetData = displayData.map(d => state.chartMode === "item" ? d.amount : d.expense);
-    
+    const chartKey = JSON.stringify({
+        mode: state.chartMode,
+        max: state.chartMaxItems,
+        data: displayData
+    });
+
+    if (state.charts.trend && state.charts.trendKey === chartKey) {
+        return;
+    }
     if (state.charts.trend) {
         state.charts.trend.destroy();
     }
-    
+    state.charts.trendKey = chartKey;
+
     if (typeof Chart === "undefined") {
         console.error("Chart.js is not loaded.");
         return;
@@ -913,12 +1068,13 @@ function renderTrendChart(chartData) {
                     label: "Expenses",
                     data: datasetData,
                     borderColor: "#8b5cf6",
-                    borderWidth: 3,
+                    borderWidth: mobile ? 2 : 3,
                     backgroundColor: purpleGrad,
                     fill: true,
                     tension: 0.4,
                     pointBackgroundColor: "#8b5cf6",
-                    pointHoverRadius: 6
+                    pointRadius: mobile ? 2 : 3,
+                    pointHoverRadius: mobile ? 4 : 6
                 }
             ]
         },
@@ -926,13 +1082,14 @@ function renderTrendChart(chartData) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            ...(mobile || reduceMotion ? { animation: false } : {}),
             onClick: (event, activeElements) => {
                 if (activeElements && activeElements.length > 0) {
                     const activePoint = activeElements[0];
                     const index = activePoint.index;
                     const clickedData = displayData[index];
                     if (state.chartMode === "day" && clickedData && clickedData.date) {
-                        renderCurrentDayFromState(clickedData.date);
+                        fetchDayTransactions(clickedData.date);
                     }
                 }
             },
@@ -999,18 +1156,17 @@ function renderCategoryBreakdown(categories) {
 
     // 2. Metric: Daily Average
     const dailyAvgEl = document.getElementById("insight-daily-avg");
-    let dailyAvg = 0;
     if (dailyAvgEl && state.stats) {
-        const totalExpense30D = state.stats.dailyStats.reduce((sum, d) => sum + d.expense, 0);
-        dailyAvg = totalExpense30D / (state.stats.dailyStats.length || 30);
+        const dailyStats = state.stats.dailyStats || [];
+        const totalExpense30D = dailyStats.reduce((sum, day) => sum + day.expense, 0);
+        const dailyAvg = totalExpense30D / (dailyStats.length || 30);
         dailyAvgEl.textContent = `Rp${formatCurrency(Math.round(dailyAvg))}`;
     }
 
-    // 3. Metric: Average Transaction Value
+    // 3. Metric: Average Transaction Value (server-computed for a stable denominator)
     const avgTxEl = document.getElementById("insight-avg-tx");
     if (avgTxEl) {
-        const expensesList = state.transactions.filter(t => t.type === "expense");
-        const avgTxVal = expensesList.length ? (expensesList.reduce((sum, t) => sum + t.amount, 0) / expensesList.length) : (totalExpense / (state.stats?.kpi.totalTransactions || 1));
+        const avgTxVal = Number(state.stats?.kpi?.avgExpenseTransaction || 0);
         avgTxEl.textContent = `Rp${formatCurrency(Math.round(avgTxVal))}`;
     }
 
@@ -1062,7 +1218,7 @@ function renderCategoryBreakdown(categories) {
                     <div class="progress-info flex-between" style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
                         <span class="progress-label" style="display: flex; align-items: center; gap: 6px;">
                             <span class="color-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${color}"></span>
-                            <strong>${capitalize(cat.category)}</strong>
+                            <strong>${escapeHtml(capitalize(cat.category))}</strong>
                         </span>
                         <span class="progress-val" style="color: var(--text-secondary);">${pct}% (${formatCurrency(cat.amount)} Rp)</span>
                     </div>
@@ -1081,13 +1237,20 @@ function renderCategoryBreakdown(categories) {
     if (categories.length === 0) {
         if (state.charts.category) {
             state.charts.category.destroy();
-            state.charts.category = null;
         }
+        state.charts.category = null;
+        state.charts.categoryKey = null;
         return;
     }
-    
+
     const categoryColors = ["#8b5cf6", "#ec4899", "#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ef4444", "#14b8a6"];
-    
+    const categoryKey = JSON.stringify(categories.map(c => [c.category, c.amount]));
+
+    if (state.charts.category && state.charts.categoryKey === categoryKey) {
+        return;
+    }
+    state.charts.categoryKey = categoryKey;
+
     if (state.charts.category) {
         state.charts.category.destroy();
     }
@@ -1111,6 +1274,7 @@ function renderCategoryBreakdown(categories) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            ...(prefersReducedMotion() || isMobileViewport() ? { animation: false } : {}),
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -1132,182 +1296,181 @@ function renderCategoryBreakdown(categories) {
 }
 
 // ======================================================
-// USERS FILTER FETCH
-// ======================================================
-async function fetchUsers() {
-    try {
-        const users = await apiCall("/api/users");
-        state.users = users;
-        
-        // Populate select list
-        el.txFilterUser.innerHTML = `<option value="">All Users</option>`;
-        users.forEach(u => {
-            const label = u.username ? `@${u.username}` : `User (ID: ${u.userId})`;
-            el.txFilterUser.innerHTML += `<option value="${u.userId}">${label}</option>`;
-        });
-    } catch (err) {
-        console.error("Failed to populate users dropdown:", err);
-    }
-}
-
-// ======================================================
 // TRANSACTIONS FETCH & VIEW
 // ======================================================
-async function fetchTransactions() {
+async function fetchTransactionsPage(page = 1) {
+    if (!el.allTbody) return;
+
+    const requestId = ++state.transactionsRequestId;
+
     try {
-        const data = await apiCall(`/api/transactions`);
-        // Always store the full dump for client-side filtering
-        state.allTransactions = data.transactions;
-        state.totalTransactions = data.total;
-        
-        if (state.currentTab === "transactions") {
-            applyFiltersAndRender();
-        } else {
-            // For overview mini list, take latest 20 items
-            renderRecentTransactionsMiniTable(data.transactions.slice(0, 20));
-        }
+        const params = new URLSearchParams({
+            page: String(page),
+            pageSize: String(state.filters.limit),
+            sort: state.filters.sortBy,
+            order: state.filters.sortOrder === 1 ? "asc" : "desc"
+        });
+        if (state.filters.search) params.set("search", state.filters.search);
+        if (state.filters.date) params.set("date", state.filters.date);
+
+        const data = await apiCall(`/api/transactions?${params.toString()}`);
+        if (requestId !== state.transactionsRequestId) return;
+
+        state.transactions = data.transactions || [];
+        state.transactionsTotal = data.total;
+        state.transactionsTotalPages = data.totalPages;
+        state.filters.page = data.page;
+
+        renderAllTransactionsTable();
+        updatePaginationControls();
     } catch (err) {
-        showToast("Failed to fetch transactions list", "error");
+        showToast(err.message || "Failed to fetch transactions list", "error");
     }
 }
 
-function applyFiltersAndRender() {
-    let filtered = [...state.allTransactions];
-    
-    // Filter search
-    if (state.filters.search) {
-        const q = state.filters.search.toLowerCase().trim();
-        filtered = filtered.filter(t => 
-            (t.item && t.item.toLowerCase().includes(q)) ||
-            (t.category && t.category.toLowerCase().includes(q))
+async function fetchRecentTransactions() {
+    try {
+        const data = await apiCall("/api/transactions?page=1&pageSize=20&sort=createdAt&order=desc");
+        state.recentTransactions = data.transactions || [];
+        renderRecentTransactionsMiniTable(state.recentTransactions);
+    } catch (err) {
+        console.error("Failed to fetch recent transactions:", err);
+    }
+}
+
+async function fetchTopExpenses() {
+    try {
+        const data = await apiCall("/api/transactions/top?limit=20");
+        state.topExpenses = data.transactions || [];
+        renderTopExpensiveTable(state.topExpenses);
+    } catch (err) {
+        console.error("Failed to fetch top expenses:", err);
+    }
+}
+
+async function fetchDayTransactions(dateStr) {
+    const date = dateStr || getTodayDateStr();
+    try {
+        const data = await apiCall(
+            `/api/transactions?date=${encodeURIComponent(date)}&pageSize=200&sort=createdAt&order=asc`
         );
+        state.dayTransactions = data.transactions || [];
+        updateCurrentDayHeader(date);
+        renderCurrentDayTable(state.dayTransactions);
+    } catch (err) {
+        console.error("Failed to fetch day transactions:", err);
     }
-    
-    // Filter user
-    if (state.filters.userId) {
-        filtered = filtered.filter(t => t.userId && t.userId.toString() === state.filters.userId.toString());
-    }
-    
-    // Filter date (YYYY-MM-DD)
-    if (state.filters.date) {
-        filtered = filtered.filter(t => {
-            if (!t.createdAt) return false;
-            const d = new Date(t.createdAt);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, "0");
-            const day = String(d.getDate()).padStart(2, "0");
-            const dateStr = `${year}-${month}-${day}`;
-            return dateStr === state.filters.date;
+}
+
+function updateCurrentDayHeader(dateStr) {
+    const titleEl = document.getElementById("current-day-title");
+    const badgeEl = document.getElementById("current-day-badge");
+    const todayStr = getTodayDateStr();
+
+    if (dateStr === todayStr) {
+        if (titleEl) titleEl.textContent = "Transaksi Hari Ini";
+        if (badgeEl) {
+            badgeEl.textContent = "Hari Ini";
+            badgeEl.style.background = "linear-gradient(135deg, var(--accent-purple), var(--accent-pink))";
+        }
+    } else {
+        const displayDate = new Date(`${dateStr}T00:00:00+07:00`).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Asia/Jakarta"
         });
-    }
-    
-    // Sort
-    if (state.filters.sortBy) {
-        const field = state.filters.sortBy;
-        const dir = state.filters.sortOrder;
-        filtered.sort((a, b) => {
-            let valA = a[field];
-            let valB = b[field];
-            if (field === "createdAt") {
-                valA = new Date(valA || 0).getTime();
-                valB = new Date(valB || 0).getTime();
-            } else if (typeof valA === "number") {
-                valA = valA || 0;
-                valB = valB || 0;
-            } else if (typeof valA === "string") {
-                valA = (valA || "").toLowerCase();
-                valB = (valB || "").toLowerCase();
-            }
-            if (valA < valB) return -1 * dir;
-            if (valA > valB) return 1 * dir;
-            return 0;
-        });
-    }
-    
-    const limit = state.filters.limit || 10;
-    state.transactions = filtered.slice(0, limit);
-    renderAllTransactionsTable();
-    
-    if (el.paginationInfo) {
-        el.paginationInfo.textContent = `Showing ${state.transactions.length} of ${filtered.length} transactions`;
+        if (titleEl) titleEl.textContent = `Transaksi ${displayDate}`;
+        if (badgeEl) {
+            badgeEl.textContent = "Hari Terpilih";
+            badgeEl.style.background = "linear-gradient(135deg, var(--accent-blue, #3b82f6), var(--accent-purple))";
+        }
     }
 }
 
 function renderRecentTransactionsMiniTable(transactions) {
+    if (!el.recentTbody) return;
+
     el.recentTbody.innerHTML = "";
     if (transactions.length === 0) {
-        el.recentTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary)">No transactions found</td></tr>`;
+        el.recentTbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary)">No transactions found</td></tr>`;
         return;
     }
-    
+
     let currentDayStr = null;
-    let colorIndex = 0;
-    
+    let colorIndex = -1;
+    const fragment = document.createDocumentFragment();
+
     transactions.forEach(t => {
         const formattedDate = formatTableDate(t.createdAt);
         const dayRef = t.createdAt ? toJakartaDateStrClient(new Date(t.createdAt)) : "no-date";
-        
+        const type = t.type === "income" ? "income" : "expense";
+
         if (currentDayStr !== dayRef) {
             currentDayStr = dayRef;
             colorIndex = (colorIndex + 1) % DAY_COLOR_CLASSES.length;
         }
-        const dayGroupClass = DAY_COLOR_CLASSES[colorIndex];
-        
+
         const tr = document.createElement("tr");
-        tr.className = dayGroupClass;
+        tr.className = DAY_COLOR_CLASSES[colorIndex];
         tr.innerHTML = `
             <td><strong>${escapeHtml(t.item)}</strong></td>
-            <td><span class="tx-amount ${t.type}">Rp${formatCurrency(t.amount)}</span></td>
+            <td><span class="tx-amount ${type}">Rp${formatCurrency(t.amount)}</span></td>
             <td>${formattedDate}</td>
         `;
-        el.recentTbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    el.recentTbody.appendChild(fragment);
 }
 
 function renderAllTransactionsTable() {
+    if (!el.allTbody) return;
+
     el.allTbody.innerHTML = "";
     if (state.transactions.length === 0) {
         el.allTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary)">No transactions found</td></tr>`;
         return;
     }
-    
+
     let currentDayStr = null;
-    let dayGroupClass = "day-group-1";
-    
+    let colorIndex = -1;
+    const fragment = document.createDocumentFragment();
+
     state.transactions.forEach(t => {
         const formattedDate = formatTableDate(t.createdAt);
-        
-        // Extract only the day part for grouping
-        const dayRef = t.createdAt ? new Date(t.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }) : "no-date";
-        
+        const dayRef = t.createdAt ? toJakartaDateStrClient(new Date(t.createdAt)) : "no-date";
+        const type = t.type === "income" ? "income" : "expense";
+        const id = escapeHtml(String(t._id || ""));
+
         if (currentDayStr !== dayRef) {
             currentDayStr = dayRef;
-            dayGroupClass = dayGroupClass === "day-group-1" ? "day-group-2" : "day-group-1";
+            colorIndex = (colorIndex + 1) % DAY_COLOR_CLASSES.length;
         }
-        
+
         const tr = document.createElement("tr");
-        tr.className = dayGroupClass;
+        tr.className = DAY_COLOR_CLASSES[colorIndex];
         tr.innerHTML = `
             <td><strong>${escapeHtml(t.item)}</strong></td>
-            <td><span class="tx-amount ${t.type}">Rp${formatCurrency(t.amount)}</span></td>
-            <td><span class="tx-badge ${t.type}">${escapeHtml(t.category)}</span></td>
-            <td style="text-transform: capitalize;">${t.type}</td>
+            <td><span class="tx-amount ${type}">Rp${formatCurrency(t.amount)}</span></td>
+            <td><span class="tx-badge ${type}">${escapeHtml(t.category)}</span></td>
+            <td style="text-transform: capitalize;">${escapeHtml(type)}</td>
             <td>${formattedDate}</td>
             <td>
                 <div class="action-btns">
-                    <button class="action-btn edit" data-id="${t._id}" title="Edit"><i data-lucide="edit-3"></i></button>
-                    <button class="action-btn delete" data-id="${t._id}" title="Delete"><i data-lucide="trash-2"></i></button>
+                    <button class="action-btn edit" data-id="${id}" title="Edit" aria-label="Edit transaction"><i data-lucide="edit-3"></i></button>
+                    <button class="action-btn delete" data-id="${id}" title="Delete" aria-label="Delete transaction"><i data-lucide="trash-2"></i></button>
                 </div>
             </td>
         `;
-        
-        // Add listeners to actions
+
         tr.querySelector(".edit").addEventListener("click", () => openEditModal(t));
         tr.querySelector(".delete").addEventListener("click", () => deleteTransaction(t._id));
-        
-        el.allTbody.appendChild(tr);
+
+        fragment.appendChild(tr);
     });
-    
+
+    el.allTbody.appendChild(fragment);
     createIconsSafe();
 }
 
@@ -1317,9 +1480,10 @@ async function deleteTransaction(id) {
     try {
         await apiCall(`/api/transactions/${id}`, "DELETE");
         showToast("Transaction deleted successfully", "success");
-        fetchTransactions();
+        await loadDashboardData(true);
+        if (state.currentTab === "transactions") fetchTransactionsPage(state.filters.page);
     } catch (err) {
-        showToast("Failed to delete transaction", "error");
+        showToast(err.message || "Failed to delete transaction", "error");
     }
 }
 
@@ -1333,19 +1497,10 @@ function initFilters() {
         el.txSearch.addEventListener("input", () => {
             clearTimeout(searchDebounce);
             searchDebounce = setTimeout(() => {
-                state.filters.search = el.txSearch.value;
-                state.filters.skip = 0;
-                applyFiltersAndRender();
+                state.filters.search = el.txSearch.value.trim();
+                state.filters.page = 1;
+                fetchTransactionsPage(1);
             }, 400);
-        });
-    }
-    
-    // User filter dropdown selection
-    if (el.txFilterUser) {
-        el.txFilterUser.addEventListener("change", () => {
-            state.filters.userId = el.txFilterUser.value;
-            state.filters.skip = 0;
-            applyFiltersAndRender();
         });
     }
 
@@ -1353,49 +1508,46 @@ function initFilters() {
     if (el.txFilterDate) {
         el.txFilterDate.addEventListener("change", () => {
             state.filters.date = el.txFilterDate.value;
-            state.filters.skip = 0;
-            applyFiltersAndRender();
+            state.filters.page = 1;
+            fetchTransactionsPage(1);
         });
     }
 
     // Limit select change
     if (el.txLimitSelect) {
         el.txLimitSelect.addEventListener("change", () => {
-            state.filters.limit = parseInt(el.txLimitSelect.value) || 10;
-            state.filters.skip = 0;
-            applyFiltersAndRender();
+            state.filters.limit = Number(el.txLimitSelect.value) || 10;
+            state.filters.page = 1;
+            fetchTransactionsPage(1);
         });
     }
-    
+
     // Sorting headers click
     el.sortHeaders.forEach(header => {
         header.addEventListener("click", () => {
             const field = header.dataset.sort;
             if (state.filters.sortBy === field) {
-                // Toggle order direction
                 state.filters.sortOrder = state.filters.sortOrder === 1 ? -1 : 1;
             } else {
                 state.filters.sortBy = field;
-                state.filters.sortOrder = -1; // Default desc
+                state.filters.sortOrder = -1;
             }
-            
-            // Render active sort state icons
+
             el.sortHeaders.forEach(h => {
                 h.classList.remove("active");
                 const icon = h.querySelector("i");
-                if (icon) {
-                    icon.setAttribute("data-lucide", "chevrons-up-down");
-                }
+                if (icon) icon.setAttribute("data-lucide", "chevrons-up-down");
             });
-            
+
             header.classList.add("active");
             const activeIcon = header.querySelector("i");
             if (activeIcon) {
                 activeIcon.setAttribute("data-lucide", state.filters.sortOrder === 1 ? "chevron-up" : "chevron-down");
             }
-            
-            lucide.createIcons();
-            applyFiltersAndRender();
+
+            createIconsSafe();
+            state.filters.page = 1;
+            fetchTransactionsPage(1);
         });
     });
 }
@@ -1404,55 +1556,83 @@ function initFilters() {
 // PAGINATION CONTROLS
 // ======================================================
 function initPagination() {
-    el.paginationPrev.addEventListener("click", () => {
-        if (state.filters.skip > 0) {
-            state.filters.skip = Math.max(0, state.filters.skip - state.filters.limit);
-            fetchTransactions();
-        }
-    });
-    
-    el.paginationNext.addEventListener("click", () => {
-        if (state.filters.skip + state.filters.limit < state.totalTransactions) {
-            state.filters.skip += state.filters.limit;
-            fetchTransactions();
-        }
-    });
+    if (el.paginationPrev) {
+        el.paginationPrev.addEventListener("click", () => {
+            if (state.filters.page > 1) {
+                fetchTransactionsPage(state.filters.page - 1);
+            }
+        });
+    }
+
+    if (el.paginationNext) {
+        el.paginationNext.addEventListener("click", () => {
+            if (state.filters.page < state.transactionsTotalPages) {
+                fetchTransactionsPage(state.filters.page + 1);
+            }
+        });
+    }
 }
 
 function updatePaginationControls() {
-    const start = state.totalTransactions === 0 ? 0 : state.filters.skip + 1;
-    const end = Math.min(state.filters.skip + state.filters.limit, state.totalTransactions);
-    
-    el.paginationInfo.textContent = `Showing ${start}-${end} of ${state.totalTransactions}`;
-    el.paginationPrev.disabled = state.filters.skip === 0;
-    el.paginationNext.disabled = state.filters.skip + state.filters.limit >= state.totalTransactions;
+    const total = state.transactionsTotal || 0;
+    const page = state.filters.page || 1;
+    const pageSize = state.filters.limit || 10;
+    const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, total);
+
+    if (el.paginationInfo) {
+        el.paginationInfo.textContent = `Showing ${start}-${end} of ${total} transactions`;
+    }
+    if (el.paginationPrev) el.paginationPrev.disabled = page <= 1;
+    if (el.paginationNext) el.paginationNext.disabled = page >= state.transactionsTotalPages;
 }
 
 // ======================================================
 // DYNAMIC MODALS & FORMS
 // ======================================================
 function initModal() {
-    el.quickAddBtn.addEventListener("click", () => openAddModal());
-    el.modalCloseBtn.addEventListener("click", closeModal);
-    el.formCancelBtn.addEventListener("click", closeModal);
-    
-    el.modal.addEventListener("click", (e) => {
-        if (e.target === el.modal) closeModal();
-    });
-    
-    el.form.addEventListener("submit", handleFormSubmit);
+    if (el.quickAddBtn) el.quickAddBtn.addEventListener("click", () => openAddModal());
+    if (el.modalCloseBtn) el.modalCloseBtn.addEventListener("click", closeModal);
+    if (el.formCancelBtn) el.formCancelBtn.addEventListener("click", closeModal);
+
+    if (el.modal) {
+        el.modal.addEventListener("click", (e) => {
+            if (e.target === el.modal) closeModal();
+        });
+    }
+
+    if (el.form) el.form.addEventListener("submit", handleFormSubmit);
+}
+
+function setSelectValue(select, value, fallback) {
+    if (!select) return;
+    const next = value || fallback;
+    if (!next) return;
+    const exists = Array.from(select.options).some((option) => option.value === next);
+    if (!exists) {
+        select.add(new Option(capitalize(next), next));
+    }
+    select.value = next;
 }
 
 function toDatetimeLocalValue(dateInput) {
     if (!dateInput) return "";
     const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return "";
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    if (Number.isNaN(d.getTime())) return "";
+
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(d);
+
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 function openAddModal() {
@@ -1474,25 +1654,19 @@ function openAddModal() {
 
     if (el.formDateOnly) el.formDateOnly.value = jStr;
     if (el.formTimeOnly) el.formTimeOnly.value = `${p.hour}:${p.minute}`;
-    
-    // Prefill user data automatically
-    el.formUserId.value = "1828479746";
-    el.formUsername.value = "imanstwn";
-    
+
     el.modal.classList.add("active");
 }
 
 function openEditModal(tx) {
     el.modalTitle.textContent = "Edit Transaction";
     el.formId.value = tx._id;
-    
-    el.formType.value = tx.type;
-    el.formCategory.value = tx.category || "manual";
+
+    setSelectValue(el.formType, tx.type, "expense");
+    setSelectValue(el.formCategory, tx.category, "manual");
     el.formItem.value = tx.item;
     el.formAmount.value = tx.amount;
-    el.formUserId.value = tx.userId || "";
-    el.formUsername.value = tx.username || "";
-    
+
     const dateObj = tx.createdAt ? new Date(tx.createdAt) : new Date();
     const jStr = toJakartaDateStrClient(dateObj);
     const parts = new Intl.DateTimeFormat("id-ID", {
@@ -1522,30 +1696,32 @@ async function handleFormSubmit(e) {
     const timeVal = el.formTimeOnly.value || "00:00";
     
     // Parse selected date and time in Jakarta timezone (+07:00)
-    const createdAtIso = new Date(`${dateVal}T${timeVal}:00+07:00`).toISOString();
+    const createdAt = new Date(`${dateVal}T${timeVal}:00+07:00`);
+    if (Number.isNaN(createdAt.getTime())) {
+        showToast("Invalid date or time", "error");
+        return;
+    }
+    const createdAtIso = createdAt.toISOString();
 
     const body = {
         type: el.formType.value,
         category: el.formCategory.value,
         item: el.formItem.value,
-        amount: parseFloat(el.formAmount.value),
-        createdAt: createdAtIso,
-        userId: el.formUserId.value ? parseInt(el.formUserId.value) : null,
-        username: el.formUsername.value.trim()
+        amount: Number(el.formAmount.value),
+        createdAt: createdAtIso
     };
-    
+
     try {
         if (id) {
-            // Edit mode
             await apiCall(`/api/transactions/${id}`, "PUT", body);
             showToast("Transaction updated successfully", "success");
         } else {
-            // Add mode
             await apiCall("/api/transactions", "POST", body);
             showToast("Transaction added successfully", "success");
         }
         closeModal();
-        loadDashboardData();
+        await loadDashboardData(true);
+        if (state.currentTab === "transactions") fetchTransactionsPage(state.filters.page);
     } catch (err) {
         showToast(err.message || "Failed to save transaction", "error");
     }
@@ -1555,11 +1731,12 @@ async function handleFormSubmit(e) {
 // GEMINI AI QUICK PARSER CONSOLE
 // ======================================================
 function initAIParser() {
-    el.aiParseBtn.addEventListener("click", handleAIQuickParse);
-    
+    if (el.aiParseBtn) el.aiParseBtn.addEventListener("click", handleAIQuickParse);
+
     // Setup AI Modal visibility
     if (el.quickAiModalBtn) {
         el.quickAiModalBtn.addEventListener("click", () => {
+            if (!el.aiInput || !el.aiPreview || !el.aiModal) return;
             el.aiInput.value = "";
             el.aiPreview.classList.add("hidden");
             el.aiPreview.innerHTML = "";
@@ -1579,6 +1756,8 @@ function initAIParser() {
 }
 
 async function handleAIQuickParse() {
+    if (!el.aiInput || !el.aiParseBtn || !el.aiPreview) return;
+
     const text = el.aiInput.value.trim();
     if (!text) {
         showToast("Please enter some text to parse", "error");
@@ -1599,7 +1778,7 @@ async function handleAIQuickParse() {
             renderAIQuickParsePreview();
         }
     } catch (err) {
-        showToast("AI parsing failed. Please try again.", "error");
+        showToast(err.message || "AI parsing failed. Please try again.", "error");
     } finally {
         el.aiParseBtn.disabled = false;
         el.aiParseBtn.innerHTML = `<i data-lucide="sparkles"></i> Parse Text`;
@@ -1620,15 +1799,16 @@ function renderAIQuickParsePreview() {
     
     state.tempParsedItems.forEach(item => {
         const div = document.createElement("div");
+        const type = item.type === "income" ? "income" : "expense";
         div.className = "preview-item";
         div.innerHTML = `
             <div>
                 <span>${escapeHtml(item.item)}</span>
-                ${item.date ? `<span style="font-size: 11px; opacity: 0.7; margin-left: 6px;">📅 ${item.date}</span>` : ""}
+                ${item.date ? `<span style="font-size: 11px; opacity: 0.7; margin-left: 6px;">${escapeHtml(item.date)}</span>` : ""}
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <span class="tx-amount ${item.type}">Rp${formatCurrency(item.amount)}</span>
-                <span class="item-type ${item.type}">${item.type}</span>
+                <span class="tx-amount ${type}">Rp${formatCurrency(item.amount)}</span>
+                <span class="item-type ${type}">${escapeHtml(type)}</span>
             </div>
         `;
         list.appendChild(div);
@@ -1650,67 +1830,81 @@ function renderAIQuickParsePreview() {
 
 async function saveAIQuickParseItems() {
     if (state.tempParsedItems.length === 0) return;
-    
-    let successCount = 0;
-    for (const item of state.tempParsedItems) {
-        try {
-            await apiCall("/api/transactions", "POST", {
-                type: item.type,
-                category: item.category || "manual",
-                item: item.item,
-                amount: item.amount,
-                createdAt: item.date ? `${item.date}T12:00:00+07:00` : undefined,
-                userId: 1828479746,
-                username: "imanstwn"
-            });
-            successCount++;
-        } catch (err) {
-            console.error("Failed to quick save item:", item);
+
+    const transactions = state.tempParsedItems.map(item => ({
+        type: item.type === "income" ? "income" : "expense",
+        category: item.category || "manual",
+        item: item.item,
+        amount: item.amount,
+        createdAt: item.date ? `${item.date}T12:00:00+07:00` : new Date().toISOString()
+    }));
+
+    try {
+        const result = await apiCall("/api/transactions/bulk", "POST", { transactions });
+        const failed = result.failed?.length || 0;
+        showToast(
+            `Saved ${result.inserted} of ${transactions.length} transactions`,
+            failed > 0 ? "error" : "success"
+        );
+        el.aiPreview.classList.add("hidden");
+        el.aiInput.value = "";
+        state.tempParsedItems = [];
+
+        if (el.aiModal) {
+            el.aiModal.classList.remove("active");
         }
+
+        await loadDashboardData(true);
+        if (state.currentTab === "transactions") fetchTransactionsPage(1);
+    } catch (err) {
+        showToast(err.message || "Failed to save transactions", "error");
     }
-    
-    showToast(`Saved ${successCount} transactions successfully`, "success");
-    el.aiPreview.classList.add("hidden");
-    el.aiInput.value = "";
-    state.tempParsedItems = [];
-    
-    // Close modal
-    if (el.aiModal) {
-        el.aiModal.classList.remove("active");
-    }
-    
-    loadDashboardData();
 }
 
 // ======================================================
 // COMMON FRONTEND UTILITY HELPERS
 // ======================================================
+let iconFrame = null;
+
 function createIconsSafe() {
-    if (typeof lucide !== "undefined" && lucide.createIcons) {
-        lucide.createIcons();
-    } else {
+    if (typeof lucide === "undefined" || !lucide.createIcons) {
         console.warn("Lucide icons library is not loaded.");
+        return;
     }
+
+    // After the first pass, most calls have nothing to do. Avoid a full-document
+    // scan on every table/calendar/toast render.
+    if (!document.querySelector("[data-lucide]")) return;
+    if (iconFrame !== null) return;
+
+    iconFrame = window.requestAnimationFrame(() => {
+        iconFrame = null;
+        lucide.createIcons();
+    });
 }
+let toastTimer = null;
+
 function showToast(message, type = "success") {
+    if (!el.toast || !el.toastMsg || !el.toastIcon) return;
+
+    clearTimeout(toastTimer);
     el.toastMsg.textContent = message;
     el.toast.className = `toast glass show ${type}`;
-    
-    // Switch icon
+
     if (type === "success") {
         el.toastIcon.setAttribute("data-lucide", "check-circle-2");
     } else {
         el.toastIcon.setAttribute("data-lucide", "alert-triangle");
     }
     createIconsSafe();
-    
-    setTimeout(() => {
+
+    toastTimer = setTimeout(() => {
         el.toast.classList.remove("show");
     }, 3000);
 }
 
 function formatCurrency(value) {
-    return new Intl.NumberFormat("id-ID").format(value);
+    return new Intl.NumberFormat("id-ID").format(Number(value) || 0);
 }
 
 function capitalize(str) {
@@ -1718,81 +1912,82 @@ function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-function escapeHtml(unsafe) {
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
-}
-
-function renderTopExpensesFromState() {
-    const topExpenses = (state.allTransactions || [])
-        .filter(t => t.type === "expense")
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 20);
-    renderTopExpensiveTable(topExpenses);
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => {
+        switch (char) {
+            case "&": return "&amp;";
+            case "<": return "&lt;";
+            case ">": return "&gt;";
+            case '"': return "&quot;";
+            default: return "&#039;";
+        }
+    });
 }
 
 function renderTopExpensiveTable(transactions) {
+    if (!el.topExpensiveTbody) return;
+
     el.topExpensiveTbody.innerHTML = "";
     if (transactions.length === 0) {
         el.topExpensiveTbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary)">No high value items</td></tr>`;
         return;
     }
-    
+
     let currentDayStr = null;
-    let colorIndex = 0;
-    
+    let colorIndex = -1;
+    const fragment = document.createDocumentFragment();
+
     transactions.forEach(t => {
         const formattedDate = formatTableDate(t.createdAt);
         const dayRef = t.createdAt ? toJakartaDateStrClient(new Date(t.createdAt)) : "no-date";
-        
+
         if (currentDayStr !== dayRef) {
             currentDayStr = dayRef;
             colorIndex = (colorIndex + 1) % DAY_COLOR_CLASSES.length;
         }
-        const dayGroupClass = DAY_COLOR_CLASSES[colorIndex];
-        
+
         const tr = document.createElement("tr");
-        tr.className = dayGroupClass;
+        tr.className = DAY_COLOR_CLASSES[colorIndex];
         tr.innerHTML = `
             <td><strong>${escapeHtml(t.item)}</strong></td>
             <td><span class="tx-amount expense">Rp${formatCurrency(t.amount)}</span></td>
             <td>${formattedDate}</td>
         `;
-        el.topExpensiveTbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    el.topExpensiveTbody.appendChild(fragment);
 }
 
 function initChartToggle() {
     if (!el.chartModeDayBtn || !el.chartModeItemBtn) return;
-    
+
     el.chartModeDayBtn.addEventListener("click", () => {
         if (state.chartMode === "day") return;
         state.chartMode = "day";
         el.chartModeDayBtn.classList.add("active");
         el.chartModeItemBtn.classList.remove("active");
-        el.chartMaxWrapper.style.display = "none";
+        if (el.chartMaxWrapper) el.chartMaxWrapper.style.display = "none";
         renderTrendChart(state.stats?.dailyStats || []);
     });
-    
+
     el.chartModeItemBtn.addEventListener("click", () => {
         if (state.chartMode === "item") return;
         state.chartMode = "item";
         el.chartModeItemBtn.classList.add("active");
         el.chartModeDayBtn.classList.remove("active");
-        el.chartMaxWrapper.style.display = "inline-block";
+        if (el.chartMaxWrapper) el.chartMaxWrapper.style.display = "inline-block";
         renderTrendChart(state.stats?.itemStats || []);
     });
-    
-    el.chartMaxSelect.addEventListener("change", () => {
-        state.chartMaxItems = parseInt(el.chartMaxSelect.value) || 10;
-        if (state.chartMode === "item") {
-            renderTrendChart(state.stats?.itemStats || []);
-        }
-    });
+
+    if (el.chartMaxSelect) {
+        el.chartMaxSelect.addEventListener("change", () => {
+            state.chartMaxItems = Number(el.chartMaxSelect.value) || 10;
+            if (state.chartMode === "item") {
+                renderTrendChart(state.stats?.itemStats || []);
+            }
+        });
+    }
 }
 
 // ======================================================
@@ -1802,6 +1997,8 @@ function initChartToggle() {
 // Convert any Date to YYYY-MM-DD string in Jakarta timezone
 function toJakartaDateStrClient(date) {
     const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return "no-date";
+
     const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Jakarta",
         year: "numeric",
@@ -1817,49 +2014,22 @@ function getTodayDateStr() {
     return toJakartaDateStrClient(new Date());
 }
 
-// Render current-day transactions panel by filtering from state (no API call)
-function renderCurrentDayFromState(dateStr) {
-    const dateToQuery = dateStr || getTodayDateStr();
-    
-    const titleEl = document.getElementById("current-day-title");
-    const badgeEl = document.getElementById("current-day-badge");
-    
-    const todayStr = getTodayDateStr();
-    if (dateToQuery === todayStr) {
-        if (titleEl) titleEl.textContent = "Today's Transactions";
-        if (badgeEl) {
-            badgeEl.textContent = "Today";
-            badgeEl.style.background = "linear-gradient(135deg, var(--accent-purple), var(--accent-pink))";
-        }
-    } else {
-        const displayDate = new Date(dateToQuery + "T00:00:00+07:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
-        if (titleEl) titleEl.textContent = `Transactions on ${displayDate}`;
-        if (badgeEl) {
-            badgeEl.textContent = "Selected Day";
-            badgeEl.style.background = "linear-gradient(135deg, var(--accent-blue, #3b82f6), var(--accent-purple))";
-        }
-    }
-    
-    // Filter transactions from state by Jakarta date
-    const filtered = (state.allTransactions || []).filter(t => {
-        if (!t.createdAt) return false;
-        return toJakartaDateStrClient(new Date(t.createdAt)) === dateToQuery;
-    });
-    
-    renderCurrentDayTable(filtered);
+function getJakartaYearMonthClient(date = new Date()) {
+    const [year, month] = toJakartaDateStrClient(date).split("-").map(Number);
+    return { year, month };
 }
 
 function renderCurrentDayTable(transactions) {
     const tbody = document.getElementById("current-day-tbody");
     const totalEl = document.getElementById("current-day-total");
     if (!tbody) return;
-    
+
     tbody.innerHTML = "";
-    
+
     // Calculate total expenses and income for this specific day
-    const totalExpenses = (transactions || []).filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-    const totalIncome = (transactions || []).filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-    
+    const totalExpenses = (transactions || []).filter(t => t.type === "expense").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalIncome = (transactions || []).filter(t => t.type === "income").reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
     if (totalEl) {
         if (totalIncome > 0) {
             totalEl.innerHTML = `Expenses: <span style="color: #ff4a9e; font-weight: 800;">Rp${formatCurrency(totalExpenses)}</span> &middot; Income: <span style="color: #10b981; font-weight: 800;">Rp${formatCurrency(totalIncome)}</span>`;
@@ -1867,33 +2037,44 @@ function renderCurrentDayTable(transactions) {
             totalEl.innerHTML = `Total: <span style="color: #ff4a9e; font-weight: 800;">Rp${formatCurrency(totalExpenses)}</span>`;
         }
     }
-    
+
     if (!transactions || transactions.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-secondary); padding: 20px;">No transactions found</td></tr>`;
         return;
     }
-    
+
+    const fragment = document.createDocumentFragment();
+
     transactions.forEach(t => {
         const d = new Date(t.createdAt);
-        const parts = new Intl.DateTimeFormat("id-ID", {
-            timeZone: "Asia/Jakarta",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
-        }).formatToParts(d);
-        const p = {};
-        parts.forEach(({ type, value }) => { p[type] = value; });
-        const timeStr = `${p.hour}:${p.minute} WIB`;
+        const type = t.type === "income" ? "income" : "expense";
+        const validDate = !Number.isNaN(d.getTime());
+        let timeStr = "-";
+
+        if (validDate) {
+            const parts = new Intl.DateTimeFormat("id-ID", {
+                timeZone: "Asia/Jakarta",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            }).formatToParts(d);
+            const p = {};
+            parts.forEach(({ type: partType, value }) => { p[partType] = value; });
+            timeStr = `${p.hour}:${p.minute} WIB`;
+        }
+
         const relativeStr = getRelativeTimeString(t.createdAt);
-        
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${escapeHtml(t.item)}</strong></td>
-            <td><span class="tx-amount ${t.type}">Rp${formatCurrency(t.amount)}</span></td>
+            <td><span class="tx-amount ${type}">Rp${formatCurrency(t.amount)}</span></td>
             <td><div>${timeStr}</div><div style="font-size:10px;color:var(--text-secondary);margin-top:1px;">${relativeStr}</div></td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    tbody.appendChild(fragment);
 }
 
 function formatShortCurrency(amount) {
@@ -1908,8 +2089,11 @@ function formatShortCurrency(amount) {
 }
 
 function getRelativeTimeString(date) {
-    const now = new Date();
-    const diffMs = now - new Date(date);
+    const timestamp = new Date(date).getTime();
+    if (Number.isNaN(timestamp)) return "";
+
+    const now = Date.now();
+    const diffMs = now - timestamp;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -1926,13 +2110,12 @@ function getRelativeTimeString(date) {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 }
 
-const ID_DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const ID_MONTHS_FULL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 function formatJakartaIndonesianDate(dateInput, includeTime = true) {
     if (!dateInput) return "-";
     const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
-    if (isNaN(d.getTime())) return "-";
+    if (Number.isNaN(d.getTime())) return "-";
 
     const formatter = new Intl.DateTimeFormat("id-ID", {
         timeZone: "Asia/Jakarta",
@@ -1942,7 +2125,7 @@ function formatJakartaIndonesianDate(dateInput, includeTime = true) {
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false
+        hourCycle: "h23"
     });
 
     const parts = formatter.formatToParts(d);
@@ -1952,46 +2135,7 @@ function formatJakartaIndonesianDate(dateInput, includeTime = true) {
     const weekday = p.weekday ? p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1) : "";
     const dateStr = `${weekday}, ${p.day} ${p.month} ${p.year}`;
     if (!includeTime) return dateStr;
-    const timeStr = `${p.hour}:${p.minute}`;
-    return `${dateStr} ${timeStr} WIB`;
-}
-
-// Viewer-local variant: formats using the browser's own timezone (multi-timezone support)
-function formatLocalIndonesianDate(dateInput, includeTime = true) {
-    if (!dateInput) return "-";
-    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
-    if (isNaN(d.getTime())) return "-";
-
-    const formatter = new Intl.DateTimeFormat("id-ID", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-    });
-
-    const parts = formatter.formatToParts(d);
-    const p = {};
-    parts.forEach(({ type, value }) => { p[type] = value; });
-
-    const weekday = p.weekday ? p.weekday.charAt(0).toUpperCase() + p.weekday.slice(1) : "";
-    const dateStr = `${weekday}, ${p.day} ${p.month} ${p.year}`;
-    if (!includeTime) return dateStr;
-    const timeStr = `${p.hour}:${p.minute}`;
-    return `${dateStr} ${timeStr}`;
-}
-
-// Short label for the viewer's own timezone, e.g. "GMT+7", "PDT", "WIB"
-function getLocalTimeZoneLabel() {
-    try {
-        const parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(new Date());
-        const tz = parts.find(part => part.type === "timeZoneName");
-        return tz ? tz.value : "";
-    } catch (e) {
-        return "";
-    }
+    return `${dateStr} ${p.hour}:${p.minute} WIB`;
 }
 
 function formatTableDate(date) {
@@ -2026,29 +2170,24 @@ function formatTableDate(date) {
 // EXPENSE CALENDAR VIEW SYSTEM
 // ======================================================
 function initCalendar() {
-    if (el.calendarPrevBtn) {
-        el.calendarPrevBtn.addEventListener("click", () => {
-            state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
-            renderExpenseCalendar();
-        });
-    }
-    if (el.calendarNextBtn) {
-        el.calendarNextBtn.addEventListener("click", () => {
-            state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
-            renderExpenseCalendar();
-        });
-    }
+    if (el.calendarPrevBtn) el.calendarPrevBtn.addEventListener("click", () => shiftCalendarMonth(-1));
+    if (el.calendarNextBtn) el.calendarNextBtn.addEventListener("click", () => shiftCalendarMonth(1));
+
     if (el.calendarTodayBtn) {
         el.calendarTodayBtn.addEventListener("click", () => {
-            state.calendarDate = new Date();
-            renderExpenseCalendar();
+            const { year, month } = getJakartaYearMonthClient();
+            state.calendarYear = year;
+            state.calendarMonth = month;
+            fetchCalendar();
         });
     }
+
     if (el.calModalCloseBtn) {
         el.calModalCloseBtn.addEventListener("click", () => {
             if (el.calendarDayModal) el.calendarDayModal.classList.remove("active");
         });
     }
+
     if (el.calendarDayModal) {
         el.calendarDayModal.addEventListener("click", (e) => {
             if (e.target === el.calendarDayModal) {
@@ -2058,155 +2197,173 @@ function initCalendar() {
     }
 }
 
+function shiftCalendarMonth(delta) {
+    const monthIndex = state.calendarYear * 12 + (state.calendarMonth - 1) + delta;
+    const year = Math.floor(monthIndex / 12);
+    const month = (monthIndex % 12) + 1;
+
+    if (year < 2000 || year > 2100) return;
+
+    state.calendarYear = year;
+    state.calendarMonth = month;
+    fetchCalendar();
+}
+
+async function fetchCalendar() {
+    try {
+        const detail = isMobileViewport() ? "0" : "1";
+        const data = await apiCall(
+            `/api/calendar?year=${state.calendarYear}&month=${state.calendarMonth}&detail=${detail}`
+        );
+        state.calendarData = data;
+        renderExpenseCalendar();
+    } catch (err) {
+        console.error("Failed to fetch calendar:", err);
+        showToast(err.message || "Failed to fetch calendar", "error");
+    }
+}
+
 function renderExpenseCalendar() {
     if (!el.calendarDaysGrid) return;
-    
-    const currentYear = state.calendarDate.getFullYear();
-    const currentMonth = state.calendarDate.getMonth(); // 0-indexed
-    
+
+    const currentYear = state.calendarYear;
+    const currentMonth = state.calendarMonth; // 1-indexed
+    const monthIndex = currentMonth - 1;
     const monthNames = ID_MONTHS_FULL;
+    const mobile = isMobileViewport();
+
     if (el.calendarMonthYear) {
-        el.calendarMonthYear.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+        el.calendarMonthYear.textContent = `${monthNames[monthIndex]} ${currentYear}`;
     }
-    
-    // Calculate grid boundaries
-    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
-    const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
-    
-    // Map transactions for this year & month
-    const txs = state.allTransactions || [];
+
+    const firstDayIndex = new Date(currentYear, monthIndex, 1).getDay();
+    const totalDaysInMonth = new Date(currentYear, monthIndex + 1, 0).getDate();
+    const prevMonthLastDay = new Date(currentYear, monthIndex, 0).getDate();
+
     const dayExpenseMap = {};
+    (state.calendarData.days || []).forEach(day => {
+        const dayNum = Number(String(day.date || "").slice(8, 10));
+        if (dayNum >= 1 && dayNum <= totalDaysInMonth) {
+            dayExpenseMap[dayNum] = {
+                total: Number(day.total || 0),
+                items: Array.isArray(day.items) ? day.items : []
+            };
+        }
+    });
+
     let monthlyExpenseSum = 0;
     let peakExpense = 0;
     let peakDay = null;
     let activeDaysCount = 0;
-    
-    txs.forEach(t => {
-        if (!t.createdAt || t.type !== "expense") return;
-        const d = new Date(t.createdAt);
-        // Compare using Jakarta timezone
-        const jStr = toJakartaDateStrClient(d);
-        const [jY, jM, jD] = jStr.split("-").map(Number);
-        if (jY === currentYear && (jM - 1) === currentMonth) {
-            const dayNum = jD;
-            if (!dayExpenseMap[dayNum]) {
-                dayExpenseMap[dayNum] = { total: 0, items: [] };
-            }
-            dayExpenseMap[dayNum].total += t.amount || 0;
-            dayExpenseMap[dayNum].items.push(t);
-        }
-    });
 
-    // Map stories by Jakarta day (YYYY-MM-DD) for this calendar
-    const storyDayMap = {};
-    (state.allStories || []).forEach(s => {
-        if (!s.createdAt) return;
-        const jStr = toJakartaDateStrClient(new Date(s.createdAt));
-        const [sY, sM, sD] = jStr.split("-").map(Number);
-        if (sY === currentYear && (sM - 1) === currentMonth) {
-            if (!storyDayMap[sD]) storyDayMap[sD] = [];
-            storyDayMap[sD].push(s);
-        }
-    });
-    Object.values(storyDayMap).forEach(list => list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-    
     Object.keys(dayExpenseMap).forEach(dayKey => {
         const dayTotal = dayExpenseMap[dayKey].total;
         monthlyExpenseSum += dayTotal;
-        activeDaysCount++;
+        activeDaysCount += 1;
         if (dayTotal > peakExpense) {
             peakExpense = dayTotal;
             peakDay = dayKey;
         }
     });
-    
-    // Update Header & Summary Stats
+
     if (el.calendarMonthTotal) {
         el.calendarMonthTotal.textContent = `Total: Rp${formatCurrency(monthlyExpenseSum)}`;
     }
     const dailyAvg = totalDaysInMonth > 0 ? Math.round(monthlyExpenseSum / totalDaysInMonth) : 0;
     if (el.calStatAvg) el.calStatAvg.textContent = `Rp${formatCurrency(dailyAvg)}`;
-    if (el.calStatPeak) el.calStatPeak.textContent = peakDay ? `${peakDay} ${monthNames[currentMonth]} (Rp${formatCurrency(peakExpense)})` : "-";
+    if (el.calStatPeak) {
+        el.calStatPeak.textContent = peakDay
+            ? `${peakDay} ${monthNames[monthIndex]} (Rp${formatCurrency(peakExpense)})`
+            : "-";
+    }
     if (el.calStatDays) el.calStatDays.textContent = `${activeDaysCount} dari ${totalDaysInMonth} hari`;
-    
-    // Build Days Grid
+
     el.calendarDaysGrid.innerHTML = "";
-    
+
     const todayStr = getTodayDateStr();
-    const [tY, tM, tD] = todayStr.split("-").map(Number);
-    const isCurrentActualMonth = tY === currentYear && (tM - 1) === currentMonth;
-    const todayDateNum = tD;
-    
-    // 1. Previous Month Padding Cells
-    for (let i = firstDayIndex; i > 0; i--) {
+    const [todayYear, todayMonth, todayDay] = todayStr.split("-").map(Number);
+    const isCurrentActualMonth = todayYear === currentYear && todayMonth === currentMonth;
+    const dayStories = state.calendarData.stories || {};
+
+    for (let i = firstDayIndex; i > 0; i -= 1) {
         const prevDayNum = prevMonthLastDay - i + 1;
         const cell = document.createElement("div");
         cell.className = "calendar-day-cell other-month";
         cell.innerHTML = `<span class="calendar-day-number">${prevDayNum}</span>`;
         el.calendarDaysGrid.appendChild(cell);
     }
-    
-    // 2. Current Month Day Cells
-    for (let day = 1; day <= totalDaysInMonth; day++) {
+
+    for (let day = 1; day <= totalDaysInMonth; day += 1) {
         const cell = document.createElement("div");
-        const isToday = isCurrentActualMonth && day === todayDateNum;
+        const isToday = isCurrentActualMonth && day === todayDay;
         cell.className = `calendar-day-cell${isToday ? " is-today" : ""}`;
-        
+
         const dayData = dayExpenseMap[day];
-        
         let headerRight = "";
         let itemsListHtml = "";
-        
+
         if (isToday) {
             headerRight = '<span style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: #ff4a9e; font-weight: 800;">Hari Ini</span>';
         }
-        
+
         if (dayData && dayData.total > 0) {
             const isHigh = peakExpense > 0 && dayData.total >= (peakExpense * 0.7);
             const badgeClass = isHigh ? "calendar-day-total-badge high-expense" : "calendar-day-total-badge";
             headerRight = `<span class="${badgeClass}">Rp${formatShortCurrency(dayData.total)}</span>`;
-            
-            let itemRows = "";
-            dayData.items.forEach(item => {
-                itemRows += `
-                    <div class="cal-item-row">
-                        <span class="cal-item-name" title="${escapeHtml(item.item)}">${escapeHtml(item.item)}</span>
-                        <span class="cal-item-amt">Rp${formatShortCurrency(item.amount)}</span>
-                    </div>
-                `;
-            });
-            
-            itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
+
+            if (!mobile) {
+                let itemRows = "";
+                (dayData.items || []).forEach(item => {
+                    itemRows += `
+                        <div class="cal-item-row">
+                            <span class="cal-item-name" title="${escapeHtml(item.item)}">${escapeHtml(item.item)}</span>
+                            <span class="cal-item-amt">Rp${formatShortCurrency(item.amount)}</span>
+                        </div>
+                    `;
+                });
+
+                itemsListHtml = `<div class="calendar-day-items-list">${itemRows}</div>`;
+            }
         }
-        
-        // Story indicator: green journal + marquee title when stories exist, red icon when none
-        const dayStories = storyDayMap[day] || [];
-        const hasStories = dayStories.length > 0;
+
+        const dateKey = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const storiesForDay = dayStories[dateKey] || [];
+        const hasStories = storiesForDay.length > 0;
         let storyHtml = "";
+
         if (hasStories) {
-            const titleText = dayStories[0].title || "Untitled Story";
-            const duration = Math.max(6, Math.min(Math.round(titleText.length * 0.6), 20));
-            const shouldMarquee = titleText.length > 24;
-            if (shouldMarquee) {
+            const titleText = storiesForDay[0].title || "Untitled Story";
+
+            if (mobile) {
                 storyHtml = `
                     <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
                         <i data-lucide="notebook-pen" class="cal-story-icon"></i>
-                        <span class="cal-story-text marquee">
-                            <span class="cal-story-marquee-inner" style="animation-duration:${duration}s">
-                                <span class="cal-story-copy">${escapeHtml(titleText)}</span>
-                                <span class="cal-story-copy">${escapeHtml(titleText)}</span>
-                            </span>
-                        </span>
                     </button>
                 `;
             } else {
-                storyHtml = `
-                    <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
-                        <i data-lucide="notebook-pen" class="cal-story-icon"></i>
-                        <span class="cal-story-text">${escapeHtml(titleText)}</span>
-                    </button>
-                `;
+                const duration = Math.max(6, Math.min(Math.round(titleText.length * 0.6), 20));
+                const shouldMarquee = titleText.length > 24;
+
+                if (shouldMarquee) {
+                    storyHtml = `
+                        <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
+                            <i data-lucide="notebook-pen" class="cal-story-icon"></i>
+                            <span class="cal-story-text marquee">
+                                <span class="cal-story-marquee-inner" style="animation-duration:${duration}s">
+                                    <span class="cal-story-copy">${escapeHtml(titleText)}</span>
+                                    <span class="cal-story-copy">${escapeHtml(titleText)}</span>
+                                </span>
+                            </span>
+                        </button>
+                    `;
+                } else {
+                    storyHtml = `
+                        <button type="button" class="cal-story-wrap has-stories" title="Read: ${escapeHtml(titleText)}">
+                            <i data-lucide="notebook-pen" class="cal-story-icon"></i>
+                            <span class="cal-story-text">${escapeHtml(titleText)}</span>
+                        </button>
+                    `;
+                }
             }
         } else {
             storyHtml = `
@@ -2227,58 +2384,157 @@ function renderExpenseCalendar() {
             ${itemsListHtml}
         `;
 
-        // Story click: open read modal for this day's stories
         const storyBtn = cell.querySelector(".cal-story-wrap.has-stories");
         if (storyBtn) {
-            storyBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                openStoryView(dayStories[0], dayStories);
+            storyBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
+                openStoryView(storiesForDay[0], storiesForDay);
             });
         }
 
-        if (dayData && dayData.items.length > 0) {
+        if (dayData && dayData.total > 0) {
             cell.addEventListener("click", () => openCalendarDayModal(currentYear, currentMonth, day, dayData));
         }
-        
+
         el.calendarDaysGrid.appendChild(cell);
     }
-    
-    // 3. Next Month Padding Cells
+
     const totalCellsSoFar = firstDayIndex + totalDaysInMonth;
     const remainingCells = (7 - (totalCellsSoFar % 7)) % 7;
-    for (let i = 1; i <= remainingCells; i++) {
+    for (let i = 1; i <= remainingCells; i += 1) {
         const cell = document.createElement("div");
         cell.className = "calendar-day-cell other-month";
         cell.innerHTML = `<span class="calendar-day-number">${i}</span>`;
         el.calendarDaysGrid.appendChild(cell);
     }
-    
+
     createIconsSafe();
 }
 
-function openCalendarDayModal(year, month, day, dayData) {
-    const jsMonth = String(month + 1).padStart(2, "0");
+async function openCalendarDayModal(year, month, day, dayData) {
+    const jsMonth = String(month).padStart(2, "0");
     const jsDay = String(day).padStart(2, "0");
-    const dObj = new Date(`${year}-${jsMonth}-${jsDay}T12:00:00+07:00`);
-    const dateStr = formatJakartaIndonesianDate(dObj, false);
-    
+    const dateKey = `${year}-${jsMonth}-${jsDay}`;
+    const dateObj = new Date(`${dateKey}T12:00:00+07:00`);
+    const dateStr = formatJakartaIndonesianDate(dateObj, false);
+
     if (el.calModalDateTitle) el.calModalDateTitle.textContent = dateStr;
     if (el.calModalTotal) el.calModalTotal.textContent = `Total Pengeluaran: Rp${formatCurrency(dayData.total)}`;
-    
     if (el.calModalTbody) {
-        el.calModalTbody.innerHTML = "";
-        dayData.items.forEach(item => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td><strong>${escapeHtml(item.item)}</strong></td>
-                <td><span class="tx-badge ${item.type}">${escapeHtml(item.category || "manual")}</span></td>
-                <td><span class="tx-amount ${item.type}">Rp${formatCurrency(item.amount)}</span></td>
-            `;
-            el.calModalTbody.appendChild(tr);
-        });
+        el.calModalTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-secondary)">Loading...</td></tr>`;
     }
-    
+
     if (el.calendarDayModal) {
         el.calendarDayModal.classList.add("active");
     }
+
+    let items = Array.isArray(dayData.items) ? dayData.items : null;
+
+    if (!items) {
+        try {
+            const data = await apiCall(
+                `/api/transactions?date=${dateKey}&pageSize=200&sort=createdAt&order=asc`
+            );
+            items = data.transactions || [];
+        } catch (err) {
+            items = [];
+            showToast(err.message || "Failed to fetch day details", "error");
+        }
+    }
+
+    if (!el.calModalTbody) return;
+
+    el.calModalTbody.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+
+    items.forEach(item => {
+        const type = item.type === "income" ? "income" : "expense";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${escapeHtml(item.item)}</strong></td>
+            <td><span class="tx-badge ${type}">${escapeHtml(item.category || "manual")}</span></td>
+            <td><span class="tx-amount ${type}">Rp${formatCurrency(item.amount)}</span></td>
+        `;
+        fragment.appendChild(tr);
+    });
+
+    el.calModalTbody.appendChild(fragment);
+}
+
+function initModalAccessibility() {
+    const modals = document.querySelectorAll(".modal-overlay");
+
+    modals.forEach((modal) => {
+        modal.setAttribute("role", "dialog");
+        modal.setAttribute("aria-modal", "true");
+    });
+
+    document.querySelectorAll(".modal-close").forEach((button) => {
+        if (!button.getAttribute("aria-label")) {
+            button.setAttribute("aria-label", "Close dialog");
+        }
+    });
+
+    if (el.storyMoodPicker) {
+        el.storyMoodPicker.querySelectorAll(".mood-btn").forEach((button) => {
+            button.setAttribute("aria-label", button.dataset.mood ? `Mood ${button.dataset.mood}` : "No mood");
+        });
+    }
+
+    let lastFocused = null;
+    const focusableSelector = [
+        "button:not([disabled])",
+        "[href]",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])"
+    ].join(",");
+
+    const observer = new MutationObserver(() => {
+        const activeModal = document.querySelector(".modal-overlay.active");
+        document.body.classList.toggle("modal-open", Boolean(activeModal));
+
+        if (activeModal && !lastFocused) {
+            lastFocused = document.activeElement;
+            const focusable = activeModal.querySelectorAll(focusableSelector);
+            if (focusable.length > 0) focusable[0].focus();
+        } else if (!activeModal && lastFocused) {
+            if (typeof lastFocused.focus === "function") lastFocused.focus();
+            lastFocused = null;
+        }
+    });
+
+    modals.forEach((modal) => {
+        observer.observe(modal, { attributes: true, attributeFilter: ["class"] });
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            document.querySelectorAll(".modal-overlay.active").forEach((modal) => {
+                modal.classList.remove("active");
+            });
+            return;
+        }
+
+        if (event.key !== "Tab") return;
+
+        const activeModal = document.querySelector(".modal-overlay.active .modal-content");
+        if (!activeModal) return;
+
+        const focusable = Array.from(activeModal.querySelectorAll(focusableSelector))
+            .filter((element) => element.offsetParent !== null);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
 }

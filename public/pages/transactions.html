@@ -17,7 +17,6 @@
                 <option value="25">Show 25</option>
                 <option value="50">Show 50</option>
                 <option value="100">Show 100</option>
-                <option value="99999">Show All</option>
             </select>
         </div>
     </div>
@@ -45,8 +44,16 @@
             </tbody>
         </table>
     </div>
-    <!-- Pagination info -->
+    <!-- Pagination -->
     <div class="table-pagination">
-        <span id="pagination-info">Showing all data</span>
+        <span id="pagination-info">Showing 0-0 of 0 transactions</span>
+        <div class="pagination-actions">
+            <button id="pagination-prev" type="button" class="btn-secondary-sm" disabled>
+                <i data-lucide="chevron-left"></i> Prev
+            </button>
+            <button id="pagination-next" type="button" class="btn-secondary-sm" disabled>
+                Next <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
     </div>
 </div>

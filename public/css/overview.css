@@ -505,3 +505,31 @@ svg.cal-story-icon,
     font-size: 10px;
     white-space: nowrap;
 }
+
+@media (max-width: 768px) {
+    .calendar-day-items-list {
+        display: none;
+    }
+
+    .calendar-day-cell {
+        height: 92px;
+        padding: 5px;
+    }
+
+    .cal-story-text.marquee .cal-story-marquee-inner {
+        animation: none;
+    }
+
+    .cal-story-marquee-inner {
+        will-change: auto;
+    }
+
+    .cal-story-text {
+        display: none;
+    }
+
+    .calendar-day-total-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+}
