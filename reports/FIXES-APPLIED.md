@@ -97,7 +97,10 @@ Changes:
 - Story cards use a single column; the reader panes use the available height.
 - Toasts sit above the FAB/navigation, and body scrolling is locked while a modal is open.
 - Tab switches update the header title (`Transactions`, `Food Tracker`, `Insights`, `Stories`).
-- Bumped asset versions to `2.4.0`.
+- Added viewport width constraints (`min-width: 0`, `max-width: 100%`) to flex/grid dashboard containers so wide tables or canvases cannot clip cards.
+- KPI amounts no longer use `nowrap` + ellipsis; they scale with `clamp()` and wrap if needed.
+- Added a small-phone calendar layout: shorter cells, compact badges, and smaller story markers.
+- Bumped asset versions to `2.5.0`.
 
 ## Data and performance
 
@@ -124,7 +127,7 @@ Changes:
 - Removed the unused `@google/genai` dependency. `npm audit --omit=dev` reports 0 vulnerabilities.
 - Added structured JSON request/error logging and `/healthz`.
 - Added `Dockerfile`, `.dockerignore`, and a systemd/Docker deployment guide.
-- Unified asset versions at `2.4.0` and pinned Chart.js/Lucide with SRI.
+- Unified asset versions at `2.5.0` and pinned Chart.js/Lucide with SRI.
 
 ## Required manual steps
 

@@ -6,11 +6,42 @@
 
 @media (max-width: 768px) {
     html {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
         -webkit-text-size-adjust: 100%;
     }
 
     body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
         overscroll-behavior-y: contain;
+    }
+
+    /* Prevent wide children (tables, canvases) from forcing the page wider
+       than the phone viewport and clipping dashboard cards. */
+    #dashboard-screen,
+    .main-content,
+    .tab-pane,
+    .dashboard-grid,
+    .kpi-grid,
+    .split-table-grid,
+    .table-container,
+    .chart-container,
+    .table-controls,
+    .calendar-container,
+    .stories-grid,
+    .story-card,
+    .category-progress-container {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #dashboard-screen,
+    .main-content,
+    .tab-pane {
+        width: 100%;
     }
 
     body.modal-open {
@@ -178,6 +209,7 @@
     }
 
     .kpi-content {
+        flex: 1;
         min-width: 0;
     }
 
@@ -188,10 +220,12 @@
     }
 
     .kpi-content h3 {
-        font-size: 16px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: clamp(13px, 4.2vw, 18px);
+        line-height: 1.2;
+        white-space: normal;
+        overflow: visible;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
     }
 
     .chart-container,
@@ -203,8 +237,19 @@
     }
 
     .chart-wrapper {
+        width: 100%;
+        max-width: 100%;
         height: 230px;
         margin-top: 10px;
+        overflow: hidden;
+    }
+
+    .chart-wrapper canvas {
+        max-width: 100%;
+    }
+
+    .table-wrapper {
+        max-width: 100%;
     }
 
     .container-header h3 {
@@ -462,6 +507,71 @@
 @media (max-width: 520px) {
     .kpi-grid {
         grid-template-columns: 1fr;
+    }
+
+    .kpi-card {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-container {
+        padding: 10px;
+    }
+
+    .calendar-days-grid {
+        gap: 2px;
+    }
+
+    .calendar-days-grid,
+    .calendar-day-cell,
+    .calendar-day-header {
+        min-width: 0;
+    }
+
+    .calendar-day-cell {
+        height: 76px;
+        padding: 2px;
+    }
+
+    .calendar-day-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1px;
+        margin-bottom: 2px;
+        padding-bottom: 1px;
+    }
+
+    .calendar-day-number {
+        font-size: 9px;
+    }
+
+    .calendar-weekdays {
+        gap: 1px;
+        font-size: 8px;
+    }
+
+    .cal-story-wrap {
+        max-width: 14px;
+        padding: 0 1px;
+    }
+
+    .cal-story-icon,
+    i.cal-story-icon,
+    svg.cal-story-icon,
+    .cal-story-wrap .cal-story-icon {
+        width: 9px !important;
+        height: 9px !important;
+        min-width: 9px;
+        min-height: 9px;
+    }
+
+    .calendar-day-total-badge {
+        max-width: 100%;
+        padding: 0 2px;
+        font-size: 7px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 

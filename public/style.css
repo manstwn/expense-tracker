@@ -1,13 +1,13 @@
 /* Master CSS Entry Point importing dedicated page & component stylesheets */
-@import url('css/variables.css?v=2.4.0');
-@import url('css/layout.css?v=2.4.0');
-@import url('css/login.css?v=2.4.0');
-@import url('css/overview.css?v=2.4.0');
-@import url('css/transactions.css?v=2.4.0');
-@import url('css/food.css?v=2.4.0');
-@import url('css/insights.css?v=2.4.0');
-@import url('css/stories.css?v=2.4.0');
-@import url('css/modals.css?v=2.4.0');
+@import url('css/variables.css?v=2.5.0');
+@import url('css/layout.css?v=2.5.0');
+@import url('css/login.css?v=2.5.0');
+@import url('css/overview.css?v=2.5.0');
+@import url('css/transactions.css?v=2.5.0');
+@import url('css/food.css?v=2.5.0');
+@import url('css/insights.css?v=2.5.0');
+@import url('css/stories.css?v=2.5.0');
+@import url('css/modals.css?v=2.5.0');
 
 /* Master Responsive Overrides */
 @media (max-width: 1024px) {
